@@ -21,7 +21,7 @@ Current tasks for the robot to preform:
 7. Greet people at the door (I suppose it could try to say hi and then learn thier names while also linking it to the face_recognition module)
 
 Hardware specs:
-1. Nividia Jetson TX2
+1. Nvidia Jetson TX2
 2. Ufactory Lite 6 (6 axis robot arm, able to lift ~1kg)
 3. ZED stereo vision camera
 4. Respeaker v2.0 (Microphone)
