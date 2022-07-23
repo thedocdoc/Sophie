@@ -27,6 +27,6 @@ Hardware specs:
 4. Respeaker v2.0 (Microphone)
 5. 3x stepper motor drives
 6. 1x Pi Pico, (controls the stepper drives, and other low level sensors)
-7. 2x 30ah life batteries 
+7. 2x 12v 30ah LiFePO4 Deep Cycle batteries 
 
 I suggest going over to the following website for more info on build and progress. https://hackaday.io/project/182694-sophie-robot
