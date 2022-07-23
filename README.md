@@ -6,9 +6,19 @@ This will be where I store the code base for my robot project. The robot is a ne
 The software will be caotic at first as I'm still in the process of learning python well. I welcome all input from all walks of life on coding as long as it is constructive in nature.
 
 Initial software/programs:
-1. voice_assistant - This will be a voice assistant based on the vosk voice recognition project, It uses a offline text to speech system to report back anwsers to questions you have. 
-2. memory_system - based on a database (will need to look into this, as it will play a important role to the robot. Think like the ability to recall the last time you seen someone if asked) 
-3. reading_module - This is a work in progress of a pipeline program to read pysical books and writing, This will unlock many use cases for the robot. 
+1. voice_assist - This will be a voice assistant based on the vosk voice recognition project, It uses a offline text to speech system to report back anwsers to questions you have. Recently I swapped it to a smaller nureal network model and it has been preforming quite well on the TX2.
+2. memory_sys - based on a database (will need to look into this, as it will play a important role to the robot. Think like the ability to recall the last time you seen someone if asked) 
+3. reading_module - This is a work in progress of a pipeline program to read pysical books and writing, This will unlock many use cases for the robot. It currently is in a working state, but also sloooow. 
+4. Face_recog
+
+Current tasks for the robot to preform:
+Read a physical book (with my now 7 year old flipping the pages) 
+*Play hide and seek (requested by my daughter, she is going places)
+Wipe down a table (any old table top, more so, see if the table is in a state to be cleaned, then find a rag, fdkjghaskdfh well maybe have a rag with cleaning solution on-board?)
+Pick up items on the floor and place them in a basket. (requested by the wife...) 
+Bring a drink from one location to another (it's a beer right?)
+Serve wine/champagne for a party environment (more alcohol!)
+Greet people at the door (I suppose it could try to say hi and then learn there names while also linking it to the face_recognition module)
 
 Hardware specs:
 1. Nividia Jetson TX2
