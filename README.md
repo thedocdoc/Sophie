@@ -6,7 +6,7 @@ This will be where I store the code base for my robot project. The robot is a ne
 The software will be caotic at first as I'm still in the process of learning python well. I welcome all input from all walks of life on coding as long as it is constructive in nature.
 
 Initial software/programs:
-1. voice_assist - This will be a voice assistant based on the vosk voice recognition project, It uses a offline text to speech system to report back anwsers to questions you have. Recently I swapped it to a smaller nureal network model and it has been preforming quite well on the TX2.
+1. voice_assist - This will be a voice assistant based on the vosk voice recognition project, It uses a offline text to speech system to report back anwsers to questions you have. Recently I swapped it to a smaller neural network model and it has been preforming quite well on the TX2.
 2. memory_sys - based on a database (will need to look into this, as it will play a important role to the robot. Think like the ability to recall the last time you seen someone if asked) 
 3. reading_module - This is a work in progress of a pipeline program to read pysical books and writing, This will unlock many use cases for the robot. It currently is in a working state, but also sloooow. 
 4. Face_recog
