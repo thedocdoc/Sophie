@@ -18,7 +18,7 @@ Wipe down a table (any old table top, more so, see if the table is in a state to
 Pick up items on the floor and place them in a basket. (requested by the wife...) 
 Bring a drink from one location to another (it's a beer right?)
 Serve wine/champagne for a party environment (more alcohol!)
-Greet people at the door (I suppose it could try to say hi and then learn there names while also linking it to the face_recognition module)
+Greet people at the door (I suppose it could try to say hi and then learn thier names while also linking it to the face_recognition module)
 
 Hardware specs:
 1. Nividia Jetson TX2
