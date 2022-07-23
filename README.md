@@ -12,9 +12,9 @@ Initial software/programs:
 
 Hardware specs:
 1. Nividia Jetson TX2
-2. Ufactory Lite 6 (6 axis robot arm)
+2. Ufactory Lite 6 (6 axis robot arm, able to lift ~1kg)
 3. ZED stereo vision camera
-4. 4x mic Respeaker 
+4. Respeaker v2.0 (Microphone)
 5. 3x stepper motor drives
 6. 1x Pi Pico, (controls the stepper drives, and other low level sensors)
 7. 2x 30ah life batteries 
