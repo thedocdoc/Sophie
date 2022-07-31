@@ -9,37 +9,31 @@ Sophie robot project:
 Offline voice assistance module
 
 This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the festival text to speech generator.
+Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions.
 '''
 
 #!/usr/bin/env python3
 
 import argparse
-# import os (used to control festival tts)
-import os
+import os # import os (used to control festival tts)
 import queue
 import sounddevice as sd
 import vosk
-from vosk import Model, KaldiRecognizer, SetLogLevel
 import sys
-#import time (to tell tiem and delay)
-import time
-# read the file that vosk creates
-import json
-# import a joke system so the robot can tell a one liner if asked
-import pyjokes
-# needed for the weather report
-import requests, json
+import time # import time (to tell tiem and delay)
+import json # read the file that vosk creates
+import pyjokes # import a joke system so the robot can tell a one liner if asked
+import requests, json # needed for the weather report
+from vosk import Model, KaldiRecognizer, SetLogLevel
 
-# Enter your OpenWeather API key here
-api_key = "YOUR_API_KEY"
+# enter your OpenWeather API key here
+api_key = ""
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
-city = "YOUR_CITY"
-url = base_url + "q=" + city + "&appid=" + api_key
+unitsParam = "&units=imperial"; # can switch from imperial to metric here
+city = ""
+url = base_url + "q=" + city + unitsParam + "&appid=" + api_key
 
 q = queue.Queue()
-
-def kelvinToFahrenheit(kelvin):
-    return "%.2f" % ((kelvin -273.15)*1.8 + 32)
 
 def int_or_str(text):
     """Helper function for argument parsing."""
@@ -82,7 +76,7 @@ try:
         # soundfile expects an int, sounddevice provides a float:
         args.samplerate = int(device_info['default_samplerate'])
 
-    #model = vosk.Model(lang="en-us")
+    # model = vosk.Model(lang="en-us")
     model = Model("/home/nvidia/dev/voice_recognition/model/vosk-model-small-en-us-0.15")
 
     if args.filename:
@@ -103,7 +97,7 @@ try:
                 if rec.AcceptWaveform(data):
                     #print(rec.Result())
                     final = rec.FinalResult()
-                    json_acceptable_string = final.replace("'", "\"")
+                    json_acceptable_string = final.replace("'", "\"") # this area may need work in the future
                     final_phrase = json.loads(json_acceptable_string)
                     print(final_phrase["text"])
                     # requested by the kid to play hide and seek
@@ -118,14 +112,19 @@ try:
                             i = i-1
                             time.sleep (1)
                             os.popen('echo "{0}" | festival -b --tts'.format(i))
+                    # who is your creator
+                    elif final_phrase["text"] in ['who made you', 'who is your creator']:
+                        who_made = ("Apollo Timbers was my original design, builder, he started the design stage in the year 2021")
+                        os.popen('echo "{0}" | festival -b --tts'.format(who_made))
+
                     # have the robot tell a joke
-                    if final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all']:
+                    elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all']:
                         My_joke = pyjokes.get_joke(language="en", category="neutral")
                         print(My_joke)
                         os.popen('echo "{0}" | festival -b --tts'.format(My_joke))
 
                     # 90% of the questions I ask Google lol
-                    if final_phrase["text"] in ['what time is it', 'what is the current time', 'current time', 'what is the time']:
+                    elif final_phrase["text"] in ['what time is it', 'what is the current time', 'current time', 'what is the time']:
                         named_tuple = time.localtime() # get struct_time
                         time_string = time.strftime("The current time is %H:%M:%p:", named_tuple)
                         print(time_string)
@@ -133,25 +132,25 @@ try:
                         os.popen('echo "{0}" | festival -b --tts'.format(time_string))
 
                     # The current date (needs work)
-                    if final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it']:
+                    elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it']:
                         named_tuple = time.localtime() # get struct_time
                         time_string = time.strftime("The current date is the %d:%m:%Y:", named_tuple)
                         print(time_string)
                         # Convert read text into speech
                         os.popen('echo "{0}" | festival -b --tts'.format(time_string))
                     # reply with name
-                    if final_phrase["text"] in ['whats your name', 'what is your name', 'what did you name your robot', 'who are you', 'who our you']:
+                    elif final_phrase["text"] in ['whats your name', 'what is your name', 'what did you name your robot', 'who are you', 'who our you']:
                         name = ("My name is Sophie")
                         os.popen('echo "{0}" | festival -b --tts'.format(name))
                     # reply if alive
-                    if final_phrase["text"] in ['are you alive', 'our you alive', 'are you a real person']:
+                    elif final_phrase["text"] in ['are you alive', 'our you alive', 'are you a real person']:
                         alive = ("No, No, though I use neural networks to understand speech just like your brain does")
                         os.popen('echo "{0}" | festival -b --tts'.format(alive))
                     # reply the anwser to the ultimate question
-                    if final_phrase["text"] in ['what is the meaning of life']:
+                    elif final_phrase["text"] in ['what is the meaning of life']:
                         ultimateQ = ("The meaning of life is 42")
                         os.popen('echo "{0}" | festival -b --tts'.format(ultimateQ))
-                    if final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside']:
+                    elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside']:
                         # HTTP request
                         response = requests.get(url)
                         # checking the status code of the request
@@ -160,12 +159,10 @@ try:
                             data = response.json()
                             # getting the main dict block
                             main = data['main']
-                            ## getting description
-                            weather_description = main['description']
+                            # getting description
+                            #weather_description = main.weather[0]
                             # getting temperature
-                            kelvin = main['temp']
-                            # convert to Fahrenheit
-                            temperature = kelvinToFahrenheit(kelvin)
+                            temperature = main['temp']
                             # gettting current feels like
                             current_feel = main['feels_like']
                             # getting the humidity
@@ -173,14 +170,30 @@ try:
                             # getting the pressure
                             pressure = main['pressure']
                             # create weather report
-                            weather_report = ("It is" + str(weather_description) + "The current temperature outside is "  + str(temperature) + "it feels like" + str(current_feel) + "with a humidity of" + str(humidity))
+                            # + str(weather_description)
+                            weather_report = ("The weather outside is currently " + ("api description") + "The temperature is "  + str(temperature) + " degress " + "and it feels like " + str(current_feel) + " degrees " + "with a humidity of " + str(humidity) + " have a nice day!")
+                            print(weather_report)
+                            os.popen('echo "{0}" | festival -b --tts'.format(weather_report))
+                    elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
+                        # HTTP request
+                        response = requests.get(url)
+                        # checking the status code of the request
+                        if response.status_code == 200:
+                            # getting data in the json format
+                            data = response.json()
+                            # getting the main dict block
+                            main = data['main']
+                            # getting temperature
+                            temperature = main['temp']
+                            weather_report = ("The temperature is "  + str(temperature) + "degrees")
+                            print(weather_report)
                             os.popen('echo "{0}" | festival -b --tts'.format(weather_report))
                 else:
                     print(rec.PartialResult())
                 if dump_fn is not None:
                     dump_fn.write(data)
 
-
+# exit on keyboard Interruptf
 except KeyboardInterrupt:
     print('\nDone')
     parser.exit(0)
