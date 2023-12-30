@@ -6,7 +6,7 @@ For a copy, see <https://opensource.org/licenses/MIT>.
 
 Sophie robot project:
 
-chat gpt voice  module
+chat gpt voice module
 
 When a phrase is not recognized by the voice_assit program it passes it to this one. Chat GPT will do it's best to anwser. The robot has a bad habit of currently hearing itself talk, so I will need to mute 
 the mic while it chats.(not yet implemented)
