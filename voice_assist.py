@@ -6,10 +6,12 @@ For a copy, see <https://opensource.org/licenses/MIT>.
 
 Sophie robot project:
 
-Offline voice assistance module
+Offline and chat gpt voice assistance module
 
 This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the festival text to speech generator.
-Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions.
+Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. If it does not recognize the 
+phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Do not it is currently hearing itself talk so I will need to mute 
+the mic while it chats.(not yet implemented)
 '''
 
 #!/usr/bin/env python3
@@ -24,13 +26,14 @@ import time # import time (to tell tiem and delay)
 import json # read the file that vosk creates
 import pyjokes # import a joke system so the robot can tell a one liner if asked
 import requests, json # needed for the weather report
+import subprocess
 from vosk import Model, KaldiRecognizer, SetLogLevel
 
 # enter your OpenWeather API key here
-api_key = ""
+api_key = "your_api_key"
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
 unitsParam = "&units=imperial"; # can switch from imperial to metric here
-city = ""
+city = "Hazelwood"
 url = base_url + "q=" + city + unitsParam + "&appid=" + api_key
 
 q = queue.Queue()
@@ -97,7 +100,7 @@ try:
                 if rec.AcceptWaveform(data):
                     #print(rec.Result())
                     final = rec.FinalResult()
-                    json_acceptable_string = final.replace("'", "\"") # this area may need work in the future
+                    json_acceptable_string = final#.replace("'", "\"") # this area may need work in the future
                     final_phrase = json.loads(json_acceptable_string)
                     print(final_phrase["text"])
                     # requested by the kid to play hide and seek
@@ -113,8 +116,8 @@ try:
                             time.sleep (1)
                             os.popen('echo "{0}" | festival -b --tts'.format(i))
                     # who is your creator
-                    elif final_phrase["text"] in ['who made you', 'who is your creator']:
-                        who_made = ("Apollo Timbers was my original design, builder, he started the design stage in the year 2021")
+                    elif final_phrase["text"] in ['who made you', 'who is your creator', 'who is your builder']:
+                        who_made = ("my original designer,and builder, was Apollo Timbers he started the design stage in the year 2020")
                         os.popen('echo "{0}" | festival -b --tts'.format(who_made))
 
                     # have the robot tell a joke
@@ -150,6 +153,14 @@ try:
                     elif final_phrase["text"] in ['what is the meaning of life']:
                         ultimateQ = ("The meaning of life is 42")
                         os.popen('echo "{0}" | festival -b --tts'.format(ultimateQ))
+                    # reply the anwser how old, may add a timer that calculates from a certain date so that it is always changing
+                    elif final_phrase["text"] in ['how old our you', 'how old are you']:
+                        how_old = ("I'm currently 3 months old")
+                        os.popen('echo "{0}" | festival -b --tts'.format(how_old))
+                    # reply with favorite color
+                    elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
+                        grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
+                        os.popen('echo "{0}" | festival -b --tts'.format(grey_scale))
                     elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside']:
                         # HTTP request
                         response = requests.get(url)
@@ -188,10 +199,22 @@ try:
                             weather_report = ("The temperature is "  + str(temperature) + "degrees")
                             print(weather_report)
                             os.popen('echo "{0}" | festival -b --tts'.format(weather_report))
-                else:
+                    else:
+                        # Use the full path to Python 3.7 in the subprocess call
+                        python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
+                        script_path = 'chat_gpt3.5.py'
+                       # If none of the commands are recognized, boot up chat_gpt3.5.py
+                        try:
+                            # Spawn a new process for chat_gpt3.5.py and pipe the input
+                            process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+                            process.communicate(input=final_phrase["text"])
+                        except Exception as e:
+                            print(f"Error occurred: {e}")
+
+                    # Existing code for partial results and data dumping
                     print(rec.PartialResult())
-                if dump_fn is not None:
-                    dump_fn.write(data)
+                    if dump_fn is not None:
+                        dump_fn.write(data)
 
 # exit on keyboard Interruptf
 except KeyboardInterrupt:
