@@ -9,4 +9,6 @@ The date being read back is a odd sounding format and should report the months a
 
 The Respeaker mic does a good job at picking up voices but I may need to boost the incoming volume
 
+The robot hears itself so a implementaion of the mic muting will need to be done.
+
 The weather section is WIP and needs alot of TLC as it needs to be more fluid sounding and report in units I can understand, not that good at Kelvin as a temp. 
