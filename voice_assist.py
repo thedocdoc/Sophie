@@ -10,8 +10,7 @@ Offline and chat gpt voice assistance module
 
 This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the festival text to speech generator.
 Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. If it does not recognize the
-phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Do not it is currently hearing itself talk so I will need to mute
-the mic while it chats.(not yet implemented)
+phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Has a bool for speaking so it hears itself less. 
 '''
 
 #!/usr/bin/env python3
