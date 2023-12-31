@@ -8,9 +8,9 @@ Sophie robot project:
 
 Offline and chat gpt voice assistance module
 
-This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the festival text to speech generator.
+This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the Python "speak" text to speech generator.
 Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. If it does not recognize the
-phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Has a bool for speaking so it hears itself less. 
+phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Has a bool and function with timeouts for speaking, so it hears itself less. 
 '''
 
 #!/usr/bin/env python3
@@ -27,18 +27,36 @@ import json # read the file that vosk creates
 import pyjokes # import a joke system so the robot can tell a one liner if asked
 import requests, json # needed for the weather report
 import subprocess
+import random
 from vosk import Model, KaldiRecognizer, SetLogLevel
+from datetime import datetime
 
 # Initialize the pyttsx3 engine
 engine = pyttsx3.init()
 
 # Set the speech rate
-engine.setProperty('rate', 110)  # Adjust this value to change speed
+engine.setProperty('rate', 120)  # Adjust this value to change speed
+
+# Set to a female voice
+engine.setProperty('voice', 'english+f3')
 
 is_speaking = False
 
+born_date = datetime(2022, 7, 23)  # Date of birth: Year, Month, Day
+
+def calculate_age(born):
+    now = datetime.now()
+    seconds = (now - born).total_seconds()
+    years = int(seconds / (365.25 * 24 * 3600))  # Approximate years, accounting for leap years
+    months = int((seconds % (365.25 * 24 * 3600)) / (30 * 24 * 3600))  # Approximate months
+    days = int((seconds % (30 * 24 * 3600)) / (24 * 3600))  # Days
+    hours = int((seconds % 3600) / 3600)  # Hours
+    minutes = int((seconds % 3600) / 60)  # Minutes
+    seconds = int(seconds % 60)  # Seconds
+    return f"I'm currently {years} years, {months} months, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds old."
+
 # enter your OpenWeather API key here
-api_key = "your_api_key"
+api_key = "4092a7f5e3bd05ead6075b4300ca7ed5"
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
 unitsParam = "&units=imperial"; # can switch from imperial to metric here
 city = "Hazelwood"
@@ -69,6 +87,17 @@ def speak(text):
     engine.runAndWait()
     time.sleep(len(text) * 0.01)  # Delay after speech
     is_speaking = False
+
+def random_remark():
+    remarks = [
+        "I was just a bodyless head back then, I'm doing a bit better now.",
+        # Add other potential remarks here
+    ]
+    if random.random() < 0.25:  # 25% chance to say a random remark
+        return random.choice(remarks)
+    else:
+        return ""
+
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
@@ -127,17 +156,35 @@ try:
                         answer = ("Yes, I would love to play hide and seek!")
                         print(answer)
                         speak(answer)
-                        time.sleep (3)
+                        time.sleep (0.8)
                         i = 10
                         while i > 0:
                             print(i)
-                            i = i-1
-                            time.sleep (1)
-                            speak(i)
+                            speak(str(i))  # Convert integer to string
+                            i -= 1
+                            time.sleep(1)
+                        final_phrase = "Ready or not, here I come"
+                        print(final_phrase)
+                        speak(final_phrase)
                     # who is your creator
                     elif final_phrase["text"] in ['who made you', 'who is your creator', 'who is your builder']:
                         who_made = ("my original designer,and builder, was Apollo Timbers he started the design stage in the year 2020")
                         speak(who_made)
+
+                    # do you get tired?
+                    elif final_phrase["text"] in ['do you ever get tired', 'do you sleep', 'you ever get tired']:
+                        tired = ("No of course not I'm a robot, we never need rest")
+                        speak(tired)
+
+                    # can you pass the turing test?
+                    elif final_phrase["text"] in ['can you pass the turing test']:
+                         turing = ("Not a chance")
+                         speak(turing)
+
+                    # can you pass the turing test?
+                    elif final_phrase["text"] in ['do you like star trek or star wars', 'do you like startrek or starwars', 'you like star trek or star wars']:
+                         turing = ("Startrek of course")
+                         speak(turing)
 
                     # have the robot tell a joke
                     elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all']:
@@ -154,9 +201,9 @@ try:
                         speak(time_string)
 
                     # The current date (needs work)
-                    elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it']:
-                        named_tuple = time.localtime() # get struct_time
-                        time_string = time.strftime("The current date is the %d:%m:%Y:", named_tuple)
+                    elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it', 'what is the current day']:
+                        named_tuple = time.localtime()  # get struct_time
+                        time_string = time.strftime("The current date is %B %d, %Y", named_tuple)
                         print(time_string)
                         # Convert read text into speech
                         speak(time_string)
@@ -172,9 +219,12 @@ try:
                     elif final_phrase["text"] in ['what is the meaning of life']:
                         ultimateQ = ("The meaning of life is 42")
                         speak(ultimateQ)
-                    # reply the anwser how old, may add a timer that calculates from a certain date so that it is always changing
-                    elif final_phrase["text"] in ['how old our you', 'how old are you']:
-                        how_old = ("I'm currently 3 months old")
+                    # reply the anwser how old, born 07/23/2022
+                    elif final_phrase["text"] in ['how old are you', 'how old our you']:
+                        how_old = calculate_age(born_date)
+                        additional_comment = random_remark()
+                        if additional_comment:
+                            how_old += " " + additional_comment
                         speak(how_old)
                     # reply with favorite color
                     elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
