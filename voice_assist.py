@@ -39,7 +39,7 @@ engine.setProperty('rate', 110)  # Adjust this value to change speed
 is_speaking = False
 
 # enter your OpenWeather API key here
-api_key = "4092a7f5e3bd05ead6075b4300ca7ed5"
+api_key = "your_api_key"
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
 unitsParam = "&units=imperial"; # can switch from imperial to metric here
 city = "Hazelwood"
