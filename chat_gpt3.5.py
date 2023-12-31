@@ -1,3 +1,17 @@
+'''
+Copyright (c) 2023 Apollo Timbers. All rights reserved.
+
+This work is licensed under the terms of the MIT license.
+For a copy, see <https://opensource.org/licenses/MIT>.
+
+Sophie robot project:
+
+Chat GPT 3.5 voice assistance module
+
+This module handles the chat gpt API calls and speaks to user if a offline phrase is not recognized in the voice_assist program. 
+Has a bool for speaking so it hears itself less. 
+'''
+
 import openai
 import pyttsx3
 import sys
