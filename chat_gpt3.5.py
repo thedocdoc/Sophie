@@ -1,21 +1,15 @@
-'''
-Copyright (c) 2023 Apollo Timbers. All rights reserved.
-
-This work is licensed under the terms of the MIT license.
-For a copy, see <https://opensource.org/licenses/MIT>.
-
-Sophie robot project:
-
-chat gpt voice module
-
-When a phrase is not recognized by the voice_assit program it passes it to this one. Chat GPT will do it's best to anwser. The robot has a bad habit of currently hearing itself talk, so I will need to mute 
-the mic while it chats.(not yet implemented)
-'''
-
 import openai
 import pyttsx3
 import sys
-import os # import os (used to control festival tts)
+import time
+
+# Initialize the pyttsx3 engine
+engine = pyttsx3.init()
+
+# Set the speech rate
+engine.setProperty('rate', 110)  # Adjust this value to change speed
+
+is_speaking = False
 
 # Load your OpenAI API key
 openai.api_key = 'your_api_key'
@@ -37,9 +31,20 @@ def ask_gpt(message):
     except Exception as e:
         return f"An error occurred: {e}"
 
+def monitor_speech(engine):
+    global is_speaking
+    while engine.isBusy():
+        time.sleep(0.1)
+    is_speaking = False
+
 def speak(text):
+    global is_speaking
+    time.sleep(0.8)  # Short delay before starting speech
+    is_speaking = True
     engine.say(text)
     engine.runAndWait()
+    time.sleep(len(text) * 0.01)  # Delay after speech
+    is_speaking = False
 
 def main():
     if sys.stdin.isatty():
@@ -50,7 +55,7 @@ def main():
                 break
             answer = ask_gpt(message)
             print(f"Answer: {answer}")
-            os.popen('echo "{0}" | festival -b --tts'.format(answer))
+            speak(answer)  # Using pyttsx3 for text-to-speech
     else:
         # Non-interactive mode: input is piped from another process
         for message in sys.stdin:
@@ -59,7 +64,7 @@ def main():
                 break
             answer = ask_gpt(message)
             print(f"Answer: {answer}")
-            os.popen('echo "{0}" | festival -b --tts'.format(answer))
+            speak(answer)  # Using pyttsx3 for text-to-speech
 
 if __name__ == "__main__":
     main()
