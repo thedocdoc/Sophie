@@ -9,18 +9,19 @@ Sophie robot project:
 Offline and chat gpt voice assistance module
 
 This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the festival text to speech generator.
-Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. If it does not recognize the 
-phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Do not it is currently hearing itself talk so I will need to mute 
+Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. If it does not recognize the
+phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Do not it is currently hearing itself talk so I will need to mute
 the mic while it chats.(not yet implemented)
 '''
 
 #!/usr/bin/env python3
 
 import argparse
-import os # import os (used to control festival tts)
+import os
 import queue
 import sounddevice as sd
 import vosk
+import pyttsx3
 import sys
 import time # import time (to tell tiem and delay)
 import json # read the file that vosk creates
@@ -29,8 +30,16 @@ import requests, json # needed for the weather report
 import subprocess
 from vosk import Model, KaldiRecognizer, SetLogLevel
 
+# Initialize the pyttsx3 engine
+engine = pyttsx3.init()
+
+# Set the speech rate
+engine.setProperty('rate', 110)  # Adjust this value to change speed
+
+is_speaking = False
+
 # enter your OpenWeather API key here
-api_key = "your_api_key"
+api_key = "4092a7f5e3bd05ead6075b4300ca7ed5"
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
 unitsParam = "&units=imperial"; # can switch from imperial to metric here
 city = "Hazelwood"
@@ -47,9 +56,20 @@ def int_or_str(text):
 
 def callback(indata, frames, time, status):
     """This is called (from a separate thread) for each audio block."""
+    if is_speaking:
+            return
     if status:
         print(status, file=sys.stderr)
     q.put(bytes(indata))
+
+def speak(text):
+    global is_speaking
+    time.sleep(0.8)  # Short delay before starting speech
+    is_speaking = True
+    engine.say(text)
+    engine.runAndWait()
+    time.sleep(len(text) * 0.01)  # Delay after speech
+    is_speaking = False
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
@@ -107,24 +127,24 @@ try:
                     if final_phrase["text"] in ['would you like to play hide and seek', 'hide and seek', 'can you play hide and seek with me', 'can you play hide and seek']:
                         answer = ("Yes, I would love to play hide and seek!")
                         print(answer)
-                        os.popen('echo "{0}" | festival -b --tts'.format(answer))
+                        speak(answer)
                         time.sleep (3)
                         i = 10
                         while i > 0:
                             print(i)
                             i = i-1
                             time.sleep (1)
-                            os.popen('echo "{0}" | festival -b --tts'.format(i))
+                            speak(i)
                     # who is your creator
                     elif final_phrase["text"] in ['who made you', 'who is your creator', 'who is your builder']:
                         who_made = ("my original designer,and builder, was Apollo Timbers he started the design stage in the year 2020")
-                        os.popen('echo "{0}" | festival -b --tts'.format(who_made))
+                        speak(who_made)
 
                     # have the robot tell a joke
                     elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all']:
                         My_joke = pyjokes.get_joke(language="en", category="neutral")
                         print(My_joke)
-                        os.popen('echo "{0}" | festival -b --tts'.format(My_joke))
+                        speak(My_joke)
 
                     # 90% of the questions I ask Google lol
                     elif final_phrase["text"] in ['what time is it', 'what is the current time', 'current time', 'what is the time']:
@@ -132,7 +152,7 @@ try:
                         time_string = time.strftime("The current time is %H:%M:%p:", named_tuple)
                         print(time_string)
                         # Convert read text into speech
-                        os.popen('echo "{0}" | festival -b --tts'.format(time_string))
+                        speak(time_string)
 
                     # The current date (needs work)
                     elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it']:
@@ -140,27 +160,27 @@ try:
                         time_string = time.strftime("The current date is the %d:%m:%Y:", named_tuple)
                         print(time_string)
                         # Convert read text into speech
-                        os.popen('echo "{0}" | festival -b --tts'.format(time_string))
+                        speak(time_string)
                     # reply with name
                     elif final_phrase["text"] in ['whats your name', 'what is your name', 'what did you name your robot', 'who are you', 'who our you']:
                         name = ("My name is Sophie")
-                        os.popen('echo "{0}" | festival -b --tts'.format(name))
+                        speak(name)
                     # reply if alive
                     elif final_phrase["text"] in ['are you alive', 'our you alive', 'are you a real person']:
                         alive = ("No, No, though I use neural networks to understand speech just like your brain does")
-                        os.popen('echo "{0}" | festival -b --tts'.format(alive))
+                        speak(alive)
                     # reply the anwser to the ultimate question
                     elif final_phrase["text"] in ['what is the meaning of life']:
                         ultimateQ = ("The meaning of life is 42")
-                        os.popen('echo "{0}" | festival -b --tts'.format(ultimateQ))
+                        speak(ultimateQ)
                     # reply the anwser how old, may add a timer that calculates from a certain date so that it is always changing
                     elif final_phrase["text"] in ['how old our you', 'how old are you']:
                         how_old = ("I'm currently 3 months old")
-                        os.popen('echo "{0}" | festival -b --tts'.format(how_old))
+                        speak(how_old)
                     # reply with favorite color
                     elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
                         grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
-                        os.popen('echo "{0}" | festival -b --tts'.format(grey_scale))
+                        speak(grey_scale)
                     elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside']:
                         # HTTP request
                         response = requests.get(url)
@@ -184,7 +204,7 @@ try:
                             # + str(weather_description)
                             weather_report = ("The weather outside is currently " + ("api description") + "The temperature is "  + str(temperature) + " degress " + "and it feels like " + str(current_feel) + " degrees " + "with a humidity of " + str(humidity) + " have a nice day!")
                             print(weather_report)
-                            os.popen('echo "{0}" | festival -b --tts'.format(weather_report))
+                            speak(weather_report)
                     elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
                         # HTTP request
                         response = requests.get(url)
@@ -198,7 +218,13 @@ try:
                             temperature = main['temp']
                             weather_report = ("The temperature is "  + str(temperature) + "degrees")
                             print(weather_report)
-                            os.popen('echo "{0}" | festival -b --tts'.format(weather_report))
+                            speak(weather_report)
+                    elif final_phrase["text"] in ['power down', 'robot power down']:
+                            shutdown_message = "Shutting down now."
+                            print(shutdown_message)
+                            speak(shutdown_message)
+                            time.sleep(3)  # Give some time for the speech to complete
+                            os.system("sudo shutdown now")  # Shutdown command for Linux-based systems
                     else:
                         # Use the full path to Python 3.7 in the subprocess call
                         python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
