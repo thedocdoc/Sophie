@@ -9,7 +9,7 @@ Sophie robot project:
 Chat GPT 3.5 voice assistance module
 
 This module handles the chat gpt API calls and speaks to user if a offline phrase is not recognized in the voice_assist program. 
-Has a bool for speaking so it hears itself less. 
+Has a bool and function with timeouts for speaking, so it hears itself less.
 '''
 
 import openai
@@ -17,26 +17,26 @@ import pyttsx3
 import sys
 import time
 
-# Initialize the pyttsx3 engine
+# Initialize text-to-speech engineS
 engine = pyttsx3.init()
 
 # Set the speech rate
-engine.setProperty('rate', 110)  # Adjust this value to change speed
+engine.setProperty('rate', 120)  # Adjust this value to change speed
+
+# Set to a female voice
+engine.setProperty('voice', 'english+f3')
 
 is_speaking = False
 
 # Load your OpenAI API key
 openai.api_key = 'your_api_key'
 
-# Initialize text-to-speech engine
-engine = pyttsx3.init()
-
 def ask_gpt(message):
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "system", "content": "You are a helpful assistant. try to be concise and to the point and a tad snarky at times"},
                 {"role": "user", "content": message}
             ]
         )
