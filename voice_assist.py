@@ -56,7 +56,7 @@ def calculate_age(born):
     return f"I'm currently {years} years, {months} months, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds old."
 
 # enter your OpenWeather API key here
-api_key = "4092a7f5e3bd05ead6075b4300ca7ed5"
+api_key = "your weather_api"
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
 unitsParam = "&units=imperial"; # can switch from imperial to metric here
 city = "Hazelwood"
