@@ -13,7 +13,7 @@ Initial software/programs:
 5. Face_recog
 
 Current tasks for the robot to preform:
-1. General voice assitance for around the house (check, needs some work but working none the less, It's hearing itself and answering itself and also it should turn to face the direction of the sound if able)
+1. General voice assitance for around the house (now supercharged with Chat GPT!) (check, needs some work but working none the less, It's hearing itself and answering itself and also it should turn to face the direction of the sound if able)
 2. Read a physical book (with my now 7 year old flipping the pages) The reading module is half way done, need to expand to pipe in outside video from the camera and tie into the voice assist
 3. *Play hide and seek (requested by my daughter, she is going places) (person asks to play haid and seek the robot says it would love too, It rotates 360 scanning the room, it then heads to the wall and starts counding down from 10, It then goes into a complicated and methodical search pattern looking for human like figures and faces. (Never to find anything of course as children will for sure out smart it or lose attention, lol)
 4. Wipe down a table (any old table top, more so, see if the table is in a state to be cleaned, then find a rag, fdkjghaskdfh well maybe have a rag with cleaning solution on-board?)
