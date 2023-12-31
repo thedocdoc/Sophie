@@ -28,6 +28,8 @@ import pyjokes # import a joke system so the robot can tell a one liner if asked
 import requests, json # needed for the weather report
 import subprocess
 import random
+import socket
+import threading
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from datetime import datetime
 
@@ -42,6 +44,9 @@ engine.setProperty('voice', 'english+f3')
 
 is_speaking = False
 
+# Global variable to track internet connection
+internet_connected = True
+
 born_date = datetime(2022, 7, 23)  # Date of birth: Year, Month, Day
 
 def calculate_age(born):
@@ -55,8 +60,32 @@ def calculate_age(born):
     seconds = int(seconds % 60)  # Seconds
     return f"I'm currently {years} years, {months} months, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds old."
 
+def is_connected():
+    try:
+        # Attempt to connect to an external server to check for internet connectivity
+        socket.create_connection(("8.8.8.8", 53))
+        return True
+    except OSError:
+        return False
+
+# Function to periodically check internet connection
+def check_internet_connection():
+    global internet_connected
+    while True:
+        time.sleep(10)  # Check every 10 seconds
+        connected = is_connected()
+        if connected != internet_connected:
+            internet_connected = connected
+            if internet_connected:
+                speak("Internet connection restored")
+            else:
+                speak("Internet connection lost")
+
+# Start the internet connection check thread
+threading.Thread(target=check_internet_connection, daemon=True).start()
+
 # enter your OpenWeather API key here
-api_key = "your weather_api"
+api_key = "your_api_key"
 base_url = "https://api.openweathermap.org/data/2.5/weather?"
 unitsParam = "&units=imperial"; # can switch from imperial to metric here
 city = "Hazelwood"
@@ -181,7 +210,7 @@ try:
                          turing = ("Not a chance")
                          speak(turing)
 
-                    # can you pass the turing test?
+                    # Starwars or star trek?
                     elif final_phrase["text"] in ['do you like star trek or star wars', 'do you like startrek or starwars', 'you like star trek or star wars']:
                          turing = ("Startrek of course")
                          speak(turing)
@@ -230,30 +259,30 @@ try:
                     elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
                         grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
                         speak(grey_scale)
+                    elif final_phrase["text"] in ['power down', 'robot power down']:
+                        shutdown_message = "Shutting down now."
+                        print(shutdown_message)
+                        speak(shutdown_message)
+                        time.sleep(3)  # Give some time for the speech to complete
+                        os.system("sudo shutdown now")  # Shutdown command for Linux-based system
                     elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside']:
-                        # HTTP request
-                        response = requests.get(url)
-                        # checking the status code of the request
-                        if response.status_code == 200:
-                            # getting data in the json format
-                            data = response.json()
-                            # getting the main dict block
-                            main = data['main']
-                            # getting description
-                            #weather_description = main.weather[0]
-                            # getting temperature
-                            temperature = main['temp']
-                            # gettting current feels like
-                            current_feel = main['feels_like']
-                            # getting the humidity
-                            humidity = main['humidity']
-                            # getting the pressure
-                            pressure = main['pressure']
-                            # create weather report
-                            # + str(weather_description)
-                            weather_report = ("The weather outside is currently " + ("api description") + "The temperature is "  + str(temperature) + " degress " + "and it feels like " + str(current_feel) + " degrees " + "with a humidity of " + str(humidity) + " have a nice day!")
-                            print(weather_report)
-                            speak(weather_report)
+                            # HTTP request
+                            response = requests.get(url)
+                            # checking the status code of the request
+                            if response.status_code == 200:
+                                # getting data in the json format
+                                data = response.json()
+                                # getting the main dict block
+                                main = data['main']
+                                # getting temperature and other details
+                                temperature = main['temp']
+                                current_feel = main['feels_like']
+                                humidity = main['humidity']
+                                # create weather report
+                                weather_report = ("The weather outside is currently ... " + str(temperature) + " degrees ...")
+                                print(weather_report)
+                                speak(weather_report)
+
                     elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
                         # HTTP request
                         response = requests.get(url)
@@ -267,18 +296,11 @@ try:
                             temperature = main['temp']
                             weather_report = ("The temperature is "  + str(temperature) + "degrees")
                             print(weather_report)
-                            speak(weather_report)
-                    elif final_phrase["text"] in ['power down', 'robot power down']:
-                            shutdown_message = "Shutting down now."
-                            print(shutdown_message)
-                            speak(shutdown_message)
-                            time.sleep(3)  # Give some time for the speech to complete
-                            os.system("sudo shutdown now")  # Shutdown command for Linux-based systems
                     else:
                         # Use the full path to Python 3.7 in the subprocess call
                         python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
                         script_path = 'chat_gpt3.5.py'
-                       # If none of the commands are recognized, boot up chat_gpt3.5.py
+                        # If none of the commands are recognized, boot up chat_gpt3.5.py
                         try:
                             # Spawn a new process for chat_gpt3.5.py and pipe the input
                             process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -290,6 +312,7 @@ try:
                     print(rec.PartialResult())
                     if dump_fn is not None:
                         dump_fn.write(data)
+
 
 # exit on keyboard Interruptf
 except KeyboardInterrupt:
