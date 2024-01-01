@@ -12,7 +12,7 @@ This openly listens to it's surroundings with the Vosk api (A neural net for spe
 speech generator. If it does not recognize the phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser.
 - Has a bool and function with timeouts for speaking, so the robot hears itself less. (still a on-going issue)
 - Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 10 seconds.
-- Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendation.
+- Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendations.
 '''
 
 #!/usr/bin/env python3
