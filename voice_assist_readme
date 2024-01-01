@@ -25,6 +25,7 @@ For unrecognized phrases, it starts chat_gpt3.5.py (an external script) to gener
 Robot Control Commands:
 
 Commands like 'power down' trigger system actions like shutting down the robot.
+
 Error Handling and Cleanup:
 
 The script handles exceptions and allows for graceful termination using a keyboard interrupt.
@@ -32,9 +33,11 @@ Age Calculation and Random Remarks:
 
 The robot calculates its age based on a predefined birth date.
 It can make random remarks based on predefined conditions.
+
 Audio Recording and Processing:
 
 The script captures audio using the sounddevice module and processes it with Vosk's KaldiRecognizer for speech recognition.
+
 Argument Parsing and Setup:
 
 The script allows for command-line arguments to specify audio devices, filenames, etc.
