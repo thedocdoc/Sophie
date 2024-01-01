@@ -9,7 +9,7 @@ Sophie robot project:
 Motor test module
 
 A micropython program for the lower level pi PICO to test the omni direction drive of the platform. This is rough get it working code. The plan is to write up code that takes more of a
-vector and magnitude commands from the higher controller (also make sure to have it stop and remove drive power if it does not recive a heartbeat
+vector and magnitude commands from the higher controller (also make sure to have it stop and remove drive power if it does not receive a heartbeat
 from main computer as a safety feature) 
 '''
 
