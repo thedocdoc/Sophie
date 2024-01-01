@@ -9,9 +9,9 @@ Sophie robot project:
 Chat GPT voice assistance module
 
 If the voice assist module does not recognize the phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. 
-Added a way for it to gracfully handle internet outages and inform the user.
 Added treading so it will start to read a really long message before chat gpt is done stating it, this has significantly reduced the delay 
 between question and anwser for longer responses. 
+Added a more robust internet loss and error handling. So that it is more generic about the error. Will display longer error to console. 
 '''
 
 import openai
