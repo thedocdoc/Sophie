@@ -260,7 +260,7 @@ try:
                     elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
                         grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
                         speak(grey_scale)
-                    elif final_phrase["text"] in ['power down', 'robot power down']:
+                    elif final_phrase["text"] in ['power down', 'robot power down', 'shut down']:
                         shutdown_message = "Shutting down now."
                         print(shutdown_message)
                         speak(shutdown_message)
