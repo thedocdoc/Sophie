@@ -8,25 +8,26 @@ Sophie robot project:
 
 Offline and chat gpt voice assistance module
 
-This openly listens to it's surroundings with the Vosk api, when a key phrase is spoken it then responds with the Python "speak" text to speech generator.
-Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. If it does not recognize the
-phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser. Has a bool and function with timeouts for speaking, so it hears itself less.
-- Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up.
+This openly listens to it's surroundings with the Vosk api (A neural net for speech pattern recognization), when a key phrase is spoken it then responds with the Python "speak" text to 
+speech generator. If it does not recognize the phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser.
+- Has a bool and function with timeouts for speaking, so the robot hears itself less. (still a on-going issue)
+- Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 10 seconds.
+- Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendation.
 '''
 
 #!/usr/bin/env python3
 
 import argparse
-import os
+import os # to interface with operating system when needed
 import queue
 import sounddevice as sd
-import vosk
+import vosk # AI neural net for speech pattern recognization
 import pyttsx3
 import sys
-import time # import time (to tell tiem and delay)
-import json # read the file that vosk creates
+import time # import time (to tell time and delay)
+import json # read the file that vosk creates, needed for the weather report
 import pyjokes # import a joke system so the robot can tell a one liner if asked
-import requests, json # needed for the weather report
+import requests # needed for the weather report
 import subprocess
 import random
 import socket
@@ -39,14 +40,60 @@ engine = pyttsx3.init()
 
 # Set the speech rate
 engine.setProperty('rate', 120)  # Adjust this value to change speed
-
-# Set to a female voice
 engine.setProperty('voice', 'english+f3')
 
 is_speaking = False
 
 # Global variable to track internet connection
 internet_connected = True
+
+# Constants
+API_KEY = "your_api_key"
+BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
+UNITS = "imperial"  # Can switch from imperial to metric here
+CITY_NAME = "Webster"
+
+# Function to get weather report and suggest attire
+def get_weather_report(city):
+    url = f"{BASE_URL}q={city}&units={UNITS}&appid={API_KEY}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+        # Extracting necessary data
+        temperature = round(data['main']['temp'])
+        feels_like = round(data['main']['feels_like'])
+        humidity = data['main']['humidity']
+        weather_description = data['weather'][0]['description']
+
+        # Constructing the weather report
+        report = (
+            f"The current weather in {city} is {weather_description}. "
+            f"The temperature is {temperature} degrees, "
+            f"but it feels like {feels_like} degrees. "
+            f"The humidity is {humidity}%. "
+        )
+
+        # Suggesting attire
+        attire_suggestion = "If you are adventuring outside today, make sure to wear "
+        if "rain" in weather_description:
+            attire_suggestion += "a raincoat."
+        elif temperature >= 76:  # Hot weather
+            attire_suggestion += "light clothing, like shorts and a t-shirt."
+        elif 50 <= temperature < 76:  # Mild weather
+            attire_suggestion += "a long-sleeve shirt and pants."
+        elif 40 <= temperature < 50:  # Cool weather
+            attire_suggestion += "a jacket or a sweater."
+        else:  # Cold weather, including 32 degrees and below
+            attire_suggestion += "warm clothing, like a heavy coat, gloves, and a hat."
+
+        return report + " " + attire_suggestion
+
+    except requests.exceptions.HTTPError as err:
+        return f"HTTP error occurred: {err}"
+    except Exception as err:
+        return f"An error occurred: {err}"
 
 born_date = datetime(2022, 7, 23)  # Date of birth: Year, Month, Day
 
@@ -84,13 +131,6 @@ def check_internet_connection():
 
 # Start the internet connection check thread
 threading.Thread(target=check_internet_connection, daemon=True).start()
-
-# enter your OpenWeather API key here
-api_key = "your_api_key"
-base_url = "https://api.openweathermap.org/data/2.5/weather?"
-unitsParam = "&units=imperial"; # can switch from imperial to metric here
-city = "Hazelwood"
-url = base_url + "q=" + city + unitsParam + "&appid=" + api_key
 
 q = queue.Queue()
 
@@ -266,37 +306,23 @@ try:
                         speak(shutdown_message)
                         time.sleep(3)  # Give some time for the speech to complete
                         os.system("sudo shutdown now")  # Shutdown command for Linux-based system
-                    elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside']:
-                            # HTTP request
-                            response = requests.get(url)
-                            # checking the status code of the request
-                            if response.status_code == 200:
-                                # getting data in the json format
-                                data = response.json()
-                                # getting the main dict block
-                                main = data['main']
-                                # getting temperature and other details
-                                temperature = main['temp']
-                                current_feel = main['feels_like']
-                                humidity = main['humidity']
-                                # create weather report
-                                weather_report = ("The weather outside is currently ... " + str(temperature) + " degrees ...")
-                                print(weather_report)
-                                speak(weather_report)
-
+                    elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside', 'what is the weather outside']:
+                       weather_report = get_weather_report(CITY_NAME)
+                       print(weather_report)
+                       speak(weather_report)
                     elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
-                        # HTTP request
-                        response = requests.get(url)
-                        # checking the status code of the request
-                        if response.status_code == 200:
-                            # getting data in the json format
-                            data = response.json()
-                            # getting the main dict block
-                            main = data['main']
-                            # getting temperature
-                            temperature = main['temp']
-                            weather_report = ("The temperature is "  + str(temperature) + "degrees")
-                            print(weather_report)
+                       # Use the get_weather_report function
+                       complete_weather_report = get_weather_report(CITY_NAME)
+
+                       # Extract only the temperature part from the complete weather report
+                       # Assuming the temperature is always mentioned after 'The temperature is ' and ends with ' degrees'
+                       start = complete_weather_report.find('The temperature is ') + len('The temperature is ')
+                       end = complete_weather_report.find(' degrees', start)
+                       temperature_report = complete_weather_report[start:end]
+
+                       temperature_report = f"The temperature in {CITY_NAME} is {temperature_report} degrees."
+                       print(temperature_report)
+                       speak(temperature_report)
                     else:
                         # Use the full path to Python 3.7 in the subprocess call
                         python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
