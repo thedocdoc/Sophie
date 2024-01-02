@@ -168,6 +168,13 @@ def random_remark():
     else:
         return ""
 
+def take_picture():
+    try:
+        # Replace '/path/to/zed_snap.py' with the actual path to the script
+        subprocess.run(['python', '/home/nvidia/dev/Sophie/zed_snap.py'], check=True)
+        print("Picture taken successfully.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to take picture:", e)
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
@@ -310,6 +317,12 @@ try:
                        weather_report = get_weather_report(CITY_NAME)
                        print(weather_report)
                        speak(weather_report)
+                    # take a picture on voice command
+                    elif final_phrase["text"] in ['take a picture', 'take a photo']:
+                        photo = ("Taking a picture now")
+                        # Command to take a picture is recognized
+                        speak(photo) 
+                        take_picture()         
                     elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
                        # Use the get_weather_report function
                        complete_weather_report = get_weather_report(CITY_NAME)
