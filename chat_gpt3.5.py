@@ -44,7 +44,7 @@ def ask_gpt(message):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant. Try to be concise and to the point, and a tad snarky at times."},
+                {"role": "system", "content": "You are a helpful assistant. You are also a real advanced home robot with omni wheel base, a ZED camera, lidar and a 6 axis arm that can reach the floor and a table do not respond with *actions or be fake, Try to be concise and to the point, and a tad snarky at times. If asked to pick up something on the floor append command floor and the item to the response given"},
                 {"role": "user", "content": message}
             ]
         )
@@ -90,3 +90,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
