@@ -9,7 +9,7 @@ Sophie robot project:
 Offline and chat gpt voice assistance module
 
 This openly listens to it's surroundings with the Vosk api (A neural net for speech pattern recognization), when a key phrase is spoken it then responds with the Python "speak" text to 
-speech generator. If it does not recognize the phrase it will start a the chat_gpt3.5.py and chat gpt will do it's best to anwser.
+speech generator. If it does not recognize the phrase it will start a the chat_gpt4.py and chat gpt will do it's best to anwser.
 - Has a bool and function with timeouts for speaking, so the robot hears itself less. (still a on-going issue)
 - Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 10 seconds.
 - Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendations.
@@ -35,8 +35,14 @@ import threading
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from datetime import datetime
 
+def on_speak_end(name, completed):
+    global is_speaking
+    is_speaking = False
+    print("Speaking completed")
+
 # Initialize the pyttsx3 engine
 engine = pyttsx3.init()
+engine.connect('finished-utterance', on_speak_end)
 
 # Set the speech rate
 engine.setProperty('rate', 120)  # Adjust this value to change speed
@@ -48,7 +54,7 @@ is_speaking = False
 internet_connected = True
 
 # Constants
-API_KEY = "your_api_key"
+API_KEY = "4092a7f5e3bd05ead6075b4300ca7ed5"
 BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
 UNITS = "imperial"  # Can switch from imperial to metric here
 CITY_NAME = "Webster"
@@ -151,12 +157,9 @@ def callback(indata, frames, time, status):
 
 def speak(text):
     global is_speaking
-    time.sleep(0.8)  # Short delay before starting speech
     is_speaking = True
     engine.say(text)
     engine.runAndWait()
-    time.sleep(len(text) * 0.01)  # Delay after speech
-    is_speaking = False
 
 def random_remark():
     remarks = [
@@ -339,10 +342,10 @@ try:
                     else:
                         # Use the full path to Python 3.7 in the subprocess call
                         python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
-                        script_path = 'chat_gpt3.5.py'
-                        # If none of the commands are recognized, boot up chat_gpt3.5.py
+                        script_path = 'chat_gpt4.py'
+                        # If none of the commands are recognized, boot up chat_gpt4.py
                         try:
-                            # Spawn a new process for chat_gpt3.5.py and pipe the input
+                            # Spawn a new process for chat_gpt4.py and pipe the input
                             process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                             process.communicate(input=final_phrase["text"])
                         except Exception as e:
