@@ -13,6 +13,7 @@ Added treading so it will start to read a really long message before chat gpt is
 between question and anwser for longer responses. 
 Added a more robust internet loss and error handling. So that it is more generic about the error. Will display longer error to console. 
 Figured out that I was reseting the conversation history each user input, it now remembers the context accross multiple interactions
+Updated model to chat GPT 4
 '''
 
 import openai
