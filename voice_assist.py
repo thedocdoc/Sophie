@@ -13,7 +13,7 @@ speech generator. If it does not recognize the phrase it will start a the chat_g
 - Has a bool and function with timeouts for speaking, so the robot hears itself less. (still a on-going issue)
 - Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 10 seconds.
 - Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendations.
-- Added logging and removed the print statments, this sped up the program quite a bit. 
+- Added logging and removed the print statements, this sped up the program quite a bit. 
 - Restructured code for speed and also now it only loads the vosk model at the start only once 
 - Enhanced date born function, it is also now more accurate actual lengths of months and accounting for leap years
 '''
