@@ -36,7 +36,7 @@ is_speaking = False
 online_mode = True  # Tracks if the program is in online mode
 
 # Load your OpenAI API key
-openai.api_key = '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'
+openai.api_key = 'your_api_key'
 
 def ask_gpt(message):
     global online_mode, conversation_history
