@@ -15,6 +15,7 @@ speech generator. If it does not recognize the phrase it will start a the chat_g
 - Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendations.
 - Added logging and removed the print statments, this sped up the program quite a bit. 
 - Restructured code for speed and also now it only loads the vosk model at the start only once 
+- Enhanced date born function, it is also now more accurate actual lengths of months and accounting for leap years
 '''
 
 #!/usr/bin/env python3
@@ -37,6 +38,7 @@ import threading
 import logging
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # To also log to a file, add filename='myapp.log' in basicConfig
@@ -115,14 +117,8 @@ born_date = datetime(2022, 7, 23)  # Date of birth: Year, Month, Day
 
 def calculate_age(born):
     now = datetime.now()
-    seconds = (now - born).total_seconds()
-    years = int(seconds / (365.25 * 24 * 3600))  # Approximate years, accounting for leap years
-    months = int((seconds % (365.25 * 24 * 3600)) / (30 * 24 * 3600))  # Approximate months
-    days = int((seconds % (30 * 24 * 3600)) / (24 * 3600))  # Days
-    hours = int((seconds % 3600) / 3600)  # Hours
-    minutes = int((seconds % 3600) / 60)  # Minutes
-    seconds = int(seconds % 60)  # Seconds
-    return f"I'm currently {years} years, {months} months, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds old."
+    delta = relativedelta(now, born)
+    return f"I'm currently {delta.years} years, {delta.months} months, {delta.days} days, {delta.hours} hours, {delta.minutes} minutes, and {delta.seconds} seconds old."
 
 def is_connected():
     try:
