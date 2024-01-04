@@ -54,7 +54,7 @@ is_speaking = False
 internet_connected = True
 
 # Constants
-API_KEY = "4092a7f5e3bd05ead6075b4300ca7ed5"
+API_KEY = "your_api_key"
 BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
 UNITS = "imperial"  # Can switch from imperial to metric here
 CITY_NAME = "Webster"
