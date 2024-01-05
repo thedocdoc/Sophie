@@ -18,9 +18,11 @@ Change log:
 - Restructured code for speed and also now it only loads the vosk model at the start only once 
 - Enhanced date born function, it is also now more accurate actual lengths of months and accounting for leap years
 - Connected to the pyttsx3 engine, now the program knows when it is speaking and does not talk to itself. This is a huge milestone. 
+- Added a semaphore file creation/deletion process to help debug the robot hearing itself and sync with chat_gpt4.py, so far no dice
+- Made the time function more natural sounding and state am/pm
 
 Future work
-- The chat_gpt4 module is still needing work in this area due to the threading, that I may end up removing. 
+- The chat_gpt4 module is still needing work in this area, that I may end up removing. Still attemptting to find a resolve
 '''
 
 #!/usr/bin/env python3
@@ -44,6 +46,15 @@ import logging
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+
+semaphore_path = "speaking_semaphore.txt"
+
+# Delete semaphore file at the start if it exists
+if os.path.exists(semaphore_path):
+    try:
+        os.remove(semaphore_path)
+    except OSError as e:
+        print(f"Error deleting semaphore file: {e}")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # To also log to a file, add filename='myapp.log' in basicConfig
@@ -78,15 +89,30 @@ def on_speak_end(name, completed):
 engine.connect('started-Word', on_speak_start)
 engine.connect('finished-Word', on_speak_end)
 
-# Function to handle speech output
 def speak(text):
     global is_speaking
-    while is_speaking:
-        time.sleep(0.1)  # Wait if already speaking
+    semaphore_path = "speaking_semaphore.txt"
+    
+    # Wait if already speaking or semaphore exists
+    while os.path.exists(semaphore_path) or is_speaking:
+        time.sleep(0.1)
+
     is_speaking = True
-    engine.say(text)
-    engine.runAndWait()
-    is_speaking = False  # Set is_speaking to False after speech is completed
+    try:
+        # Create the semaphore file
+        with open(semaphore_path, "w") as f:
+            pass
+
+        engine.say(text)
+        engine.runAndWait()
+
+    finally:
+        is_speaking = False
+        # Safely delete the semaphore file
+        try:
+            os.remove(semaphore_path)
+        except OSError:
+            pass  # Handle the error if needed
 
 # Constants
 API_KEY = "your_api_key"
@@ -142,6 +168,19 @@ def calculate_age(born):
     now = datetime.now()
     delta = relativedelta(now, born)
     return f"I'm currently {delta.years} years, {delta.months} months, {delta.days} days, {delta.hours} hours, {delta.minutes} minutes, and {delta.seconds} seconds old."
+
+def get_current_time():
+    now = datetime.now()
+    hour = now.hour
+    minute = now.minute
+    am_pm = "am" if hour < 12 else "pm"
+
+    # Convert to 12-hour format
+    hour = hour % 12 or 12  # Converts '0' to '12'
+
+    # Format the time string
+    time_string = f"It is {hour}:{minute:02d} {am_pm}."
+    return time_string
 
 def is_connected():
     try:
@@ -213,135 +252,139 @@ def main():
         rec = vosk.KaldiRecognizer(model, args.samplerate)
         while True:
             data = q.get()
-            if rec.AcceptWaveform(data):
-                final = rec.FinalResult()
-                json_acceptable_string = final
-                final_phrase = json.loads(json_acceptable_string)
-                logging.info(final_phrase["text"])
-                # requested by the kid to play hide and seek
-                if final_phrase["text"] in ['would you like to play hide and seek', 'what would you like to play hide and seek', 'hide and seek', 'can you play hide and seek with me', 'can you play hide and seek']:
-                    answer = ("Yes, I would love to play hide and seek!")
-                    logging.info(answer)
-                    speak(answer)
-                    time.sleep (0.8)
-                    i = 10
-                    while i > 0:
-                        logging.debug(i)
-                        speak(str(i))  # Convert integer to string
-                        i -= 1
-                        time.sleep(0.5)
-                    final_phrase = "Ready or not, here I come"
-                    logging.info(final_phrase)
-                    speak(final_phrase)
-                # who is your creator
-                elif final_phrase["text"] in ['who made you', 'who is your creator', 'who is your builder']:
-                    who_made = ("my original designer,and builder, was Apollo Timbers he started the design stage in the year 2020")
-                    speak(who_made)
+            
+            # Check if chat_gpt4.py is speaking
+            if not os.path.exists("speaking_semaphore.txt") and not is_speaking:
+                if rec.AcceptWaveform(data):
+                    final = rec.FinalResult()
+                    json_acceptable_string = final
+                    final_phrase = json.loads(json_acceptable_string)
+                    logging.info(final_phrase["text"])
+                    # requested by the kid to play hide and seek
+                    if final_phrase["text"] in ['would you like to play hide and seek', 'what would you like to play hide and seek', 'hide and seek', 'can you play hide and seek with me', 'can you play hide and seek']:
+                        answer = ("Yes, I would love to play hide and seek!")
+                        logging.info(answer)
+                        speak(answer)
+                        time.sleep (0.8)
+                        i = 10
+                        while i > 0:
+                            logging.debug(i)
+                            speak(str(i))  # Convert integer to string
+                            i -= 1
+                            time.sleep(0.5)
+                        final_phrase = "Ready or not, here I come"
+                        logging.info(final_phrase)
+                        speak(final_phrase)
+                    # who is your creator
+                    elif final_phrase["text"] in ['who made you', 'who is your creator', 'who is your builder']:
+                        who_made = ("my original designer,and builder, was Apollo Timbers he started the design stage in the year 2020")
+                        speak(who_made)
 
-                # do you get tired?
-                elif final_phrase["text"] in ['do you ever get tired', 'do you sleep', 'you ever get tired']:
-                    tired = ("No of course not I'm a robot, we never need rest")
-                    speak(tired)
+                    # do you get tired?
+                    elif final_phrase["text"] in ['do you ever get tired', 'do you sleep', 'you ever get tired']:
+                        tired = ("No of course not I'm a robot, we never need rest")
+                        speak(tired)
 
-                # can you pass the turing test?
-                elif final_phrase["text"] in ['can you pass the turing test']:
-                     turing = ("Not a chance")
-                     speak(turing)
+                    # can you pass the turing test?
+                    elif final_phrase["text"] in ['can you pass the turing test']:
+                         turing = ("Not a chance")
+                         speak(turing)
 
-                # Starwars or star trek?
-                elif final_phrase["text"] in ['do you like star trek or star wars', 'do you like startrek or starwars', 'you like star trek or star wars']:
-                     turing = ("Startrek of course")
-                     speak(turing)
+                    # Starwars or star trek?
+                    elif final_phrase["text"] in ['do you like star trek or star wars', 'do you like startrek or starwars', 'you like star trek or star wars']:
+                         turing = ("Startrek of course")
+                         speak(turing)
 
-                # have the robot tell a joke
-                elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all', 'come to a joke']:
-                    My_joke = pyjokes.get_joke(language="en", category="neutral")
-                    logging.debug(My_joke)
-                    speak(My_joke)
+                    # have the robot tell a joke
+                    elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all', 'come to a joke']:
+                        My_joke = pyjokes.get_joke(language="en", category="neutral")
+                        logging.debug(My_joke)
+                        speak(My_joke)
 
-                # 90% of the questions I ask Google lol
-                elif final_phrase["text"] in ['what time is it', 'what is the current time', 'current time', 'what is the time']:
-                    named_tuple = time.localtime() # get struct_time
-                    time_string = time.strftime("The current time is %H:%M:%p:", named_tuple)
-                    logging.debug(time_string)
-                    # Convert read text into speech
-                    speak(time_string)
+                    # 90% of the questions I ask Google lol
+                    elif final_phrase["text"] in ['what time is it', 'what is the current time', 'current time', 'what is the time']:
+                        # Replace the existing code here with:
+                        time_string = get_current_time()
+                        logging.debug(time_string)
+                        # Convert read text into speech
+                        speak(time_string)
 
-                # The current date (needs work)
-                elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it', 'what is the current day']:
-                    named_tuple = time.localtime()  # get struct_time
-                    time_string = time.strftime("The current date is %B %d, %Y", named_tuple)
-                    logging.debug(time_string)
-                    # Convert read text into speech
-                    speak(time_string)
-                # reply with name
-                elif final_phrase["text"] in ['whats your name', 'what is your name', 'what did you name your robot', 'who are you', 'who our you']:
-                    name = ("My name is Sophie")
-                    speak(name)
-                # reply if alive
-                elif final_phrase["text"] in ['are you alive', 'our you alive', 'are you a real person']:
-                    alive = ("No, No, though I use neural networks to understand speech just like your brain does")
-                    speak(alive)
-                # reply the anwser to the ultimate question
-                elif final_phrase["text"] in ['what is the meaning of life']:
-                    ultimateQ = ("The meaning of life is 42")
-                    speak(ultimateQ)
-                # reply the anwser how old, born 07/23/2022
-                elif final_phrase["text"] in ['how old are you', 'how old our you']:
-                    how_old = calculate_age(born_date)
-                    additional_comment = random_remark()
-                    if additional_comment:
-                        how_old += " " + additional_comment
-                    speak(how_old)
-                # reply with favorite color
-                elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
-                    grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
-                    speak(grey_scale)
-                elif final_phrase["text"] in ['power down', 'robot power down', 'shut down']:
-                    shutdown_message = "Shutting down now."
-                    logging.info(shutdown_message)
-                    speak(shutdown_message)
-                    time.sleep(3)  # Give some time for the speech to complete
-                    os.system("sudo shutdown now")  # Shutdown command for Linux-based system
-                elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside', 'what is the weather outside']:
-                   weather_report = get_weather_report(CITY_NAME)
-                   logging.info(weather_report)
-                   speak(weather_report)
-                # take a picture on voice command
-                elif final_phrase["text"] in ['take a picture', 'take a photo']:
-                    photo = ("Taking a picture now")
-                    # Command to take a picture is recognized
-                    speak(photo)
-                    take_picture()
-                elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
-                   # Use the get_weather_report function
-                   complete_weather_report = get_weather_report(CITY_NAME)
+                    # The current date (needs work)
+                    elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it', 'what is the current day']:
+                        named_tuple = time.localtime()  # get struct_time
+                        time_string = time.strftime("The current date is %B %d, %Y", named_tuple)
+                        logging.debug(time_string)
+                        # Convert read text into speech
+                        speak(time_string)
+                    # reply with name
+                    elif final_phrase["text"] in ['whats your name', 'what is your name', 'what did you name your robot', 'who are you', 'who our you']:
+                        name = ("My name is Sophie")
+                        speak(name)
+                    # reply if alive
+                    elif final_phrase["text"] in ['are you alive', 'our you alive', 'are you a real person']:
+                        alive = ("No, No, though I use neural networks to understand speech just like your brain does")
+                        speak(alive)
+                    # reply the anwser to the ultimate question
+                    elif final_phrase["text"] in ['what is the meaning of life']:
+                        ultimateQ = ("The meaning of life is 42")
+                        speak(ultimateQ)
+                    # reply the anwser how old, born 07/23/2022
+                    elif final_phrase["text"] in ['how old are you', 'how old our you']:
+                        how_old = calculate_age(born_date)
+                        additional_comment = random_remark()
+                        if additional_comment:
+                            how_old += " " + additional_comment
+                        speak(how_old)
+                    # reply with favorite color
+                    elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
+                        grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
+                        speak(grey_scale)
+                    elif final_phrase["text"] in ['power down', 'robot power down', 'shut down']:
+                        shutdown_message = "Shutting down now."
+                        logging.info(shutdown_message)
+                        speak(shutdown_message)
+                        time.sleep(3)  # Give some time for the speech to complete
+                        os.system("sudo shutdown now")  # Shutdown command for Linux-based system
+                    elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside', 'what is the weather outside']:
+                       weather_report = get_weather_report(CITY_NAME)
+                       logging.info(weather_report)
+                       speak(weather_report)
+                    # take a picture on voice command
+                    elif final_phrase["text"] in ['take a picture', 'take a photo']:
+                        photo = ("Taking a picture now")
+                        # Command to take a picture is recognized
+                        speak(photo)
+                        take_picture()
+                    elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
+                       # Use the get_weather_report function
+                       complete_weather_report = get_weather_report(CITY_NAME)
 
-                   # Extract only the temperature part from the complete weather report
-                   # Assuming the temperature is always mentioned after 'The temperature is ' and ends with ' degrees'
-                   start = complete_weather_report.find('The temperature is ') + len('The temperature is ')
-                   end = complete_weather_report.find(' degrees', start)
-                   temperature_report = complete_weather_report[start:end]
+                       # Extract only the temperature part from the complete weather report
+                       # Assuming the temperature is always mentioned after 'The temperature is ' and ends with ' degrees'
+                       start = complete_weather_report.find('The temperature is ') + len('The temperature is ')
+                       end = complete_weather_report.find(' degrees', start)
+                       temperature_report = complete_weather_report[start:end]
 
-                   temperature_report = f"The temperature in {CITY_NAME} is {temperature_report} degrees."
-                   logging.info(temperature_report)
-                   speak(temperature_report)
-                else:
-                    # Use the full path to Python 3.7 in the subprocess call
-                    python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
-                    script_path = 'chat_gpt4.py'
-                    # If none of the commands are recognized, boot up chat_gpt4.py
-                    try:
-                        # Spawn a new process for chat_gpt4.py and pipe the input
-                        process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-                        process.communicate(input=final_phrase["text"])
-                    except Exception as e:
-                        logging.info(f"Error occurred: {e}")
+                       temperature_report = f"The temperature in {CITY_NAME} is {temperature_report} degrees."
+                       logging.info(temperature_report)
+                       speak(temperature_report)
+                    else:
+                        time.sleep(0.1) # prevent tight looping
+                        # Use the full path to Python 3.7 in the subprocess call
+                        python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
+                        script_path = 'chat_gpt4.py'
+                        # If none of the commands are recognized, boot up chat_gpt4.py
+                        try:
+                            # Spawn a new process for chat_gpt4.py and pipe the input
+                            process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+                            process.communicate(input=final_phrase["text"])
+                        except Exception as e:
+                            logging.info(f"Error occurred: {e}")
 
-                # Existing code for partial results and data dumping
-                logging.info(rec.PartialResult())
-                if dump_fn is not None:
-                    dump_fn.write(data)
+                    # Existing code for partial results and data dumping
+                    logging.info(rec.PartialResult())
+                    if dump_fn is not None:
+                        dump_fn.write(data)
 
 try:
     parser = argparse.ArgumentParser(add_help=False)
