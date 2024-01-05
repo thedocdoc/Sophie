@@ -54,7 +54,7 @@ if os.path.exists(semaphore_path):
     try:
         os.remove(semaphore_path)
     except OSError as e:
-        print(f"Error deleting semaphore file: {e}")
+        logging.error(f"Error deleting semaphore file: {e}")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # To also log to a file, add filename='myapp.log' in basicConfig
