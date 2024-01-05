@@ -1,3 +1,16 @@
+'''
+Copyright (c) 2023 Apollo Timbers. All rights reserved.
+
+This work is licensed under the terms of the MIT license.  
+For a copy, see <https://opensource.org/licenses/MIT>.
+
+Sophie robot project:
+
+This module brings up teh ZED camera and then takes a full resolution image
+
+- Added print out full path and a bit of cleanup 
+'''
+
 import sys
 import pyzed.sl as sl
 import cv2
@@ -39,9 +52,13 @@ def main():
         cv2.imshow("Image", image_ocv)
         cv2.waitKey(6000)  # Wait for 6 seconds (6000 milliseconds)
 
-    # Clean up
-    cv2.destroyAllWindows()
-    zed.close()
+        # Print the file path before exit
+        print(full_path)  # This line is added to output the path of the saved image
+
+        # Clean up
+        cv2.destroyAllWindows()
+        zed.close()
+
 
 if __name__ == "__main__":
     main()
