@@ -1,3 +1,4 @@
+
 '''
 Copyright (c) 2023 Apollo Timbers. All rights reserved.
 
@@ -9,11 +10,14 @@ Sophie robot project:
 Chat GPT voice assistance module
 
 If the voice assist module does not recognize the phrase it will start a the chat_gpt4.py and chat gpt will do it's best to anwser. 
-Added treading so it will start to read a really long message before chat gpt is done stating it, this has significantly reduced the delay 
+
+Change log:
+ -Added treading so it will start to read a really long message before chat gpt is done stating it, this has significantly reduced the delay 
 between question and anwser for longer responses. 
-Added a more robust internet loss and error handling. So that it is more generic about the error. Will display longer error to console. 
-Figured out that I was reseting the conversation history each user input, it now remembers the context accross multiple interactions
-Updated model to chat GPT 4
+- Added a more robust internet loss and error handling. So that it is more generic about the error. Will display longer error to console. 
+- Figured out that I was reseting the conversation history each user input, it now remembers the context accross multiple interactions
+- Updated model to chat GPT 4
+- Added a semaphore file creation/deletion process to help debug the robot hearing itself, no dice
 '''
 
 import openai
@@ -22,6 +26,7 @@ import sys
 import threading
 import time
 import requests
+import os
 
 conversation_history = []
 
@@ -70,14 +75,31 @@ def ask_gpt(message):
 def speak(text):
     def run_speak():
         global is_speaking
+        print("Checking if already speaking or semaphore file exists...")  # Debug statement
+        while os.path.exists("speaking_semaphore.txt") or is_speaking:
+            time.sleep(0.1)
+        print("Ready to speak.")  # Debug statement
         is_speaking = True
-        engine.say(text)
-        engine.runAndWait()
-        is_speaking = False
+        print("is_speaking set to True")  # Debug statement
+        # Create the semaphore file
+        open("speaking_semaphore.txt", "w").close()
+        try:
+            engine.say(text)
+            engine.runAndWait()
+        finally:
+            is_speaking = False
+            print("is_speaking set to False")  # Debug statement
+            # Delete the semaphore file
+            os.remove("speaking_semaphore.txt")
+            print("Semaphore file deleted.")  # Debug statement
 
+    # Start the speech in a new thread
     threading.Thread(target=run_speak).start()
 
 def main():
+    # Quick TTS test
+    # speak("Hello World")
+    # time.sleep(3)  # Wait for the test speech to finish
     global online_mode, conversation_history
 
     if sys.stdin.isatty():
