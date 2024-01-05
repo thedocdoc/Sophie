@@ -9,7 +9,7 @@ The software will be caotic at first as I'm still in the process of learning pyt
 
 Initial software/programs:
 1. voice_assist - This will be a voice assistant based on the vosk voice recognition project, It uses a offline text to speech system to report back anwsers to questions you have. Recently I swapped it to a smaller neural network model and it has been preforming quite well on the TX2.
-2. reading_module - This is a work in progress of a pipeline program to read physical books and writing, This will unlock many use cases for the robot. It currently is in a working state, but also sloooow. 
+2. reading_module - This is a work in progress of a pipeline program to read physical books and writing, This will unlock many use cases for the robot. It currently is in a working state, but also sloooow. (Takes a image from the camera now)
 3. chat_gpt4 - This is a pass off module that pings the Chat GPT 4 servers for a response then speaks it out.
 4. zed_snap - Initilizes the ZED camera, takes a high resolution photo, date/time stamps it and saves to a folder. 
 5. memory_sys - based on a database (will need to look into this, as it will play a important role to the robot. Think like the ability to recall the last time you seen someone if asked) 
