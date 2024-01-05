@@ -9,13 +9,18 @@ Sophie robot project:
 Offline and chat gpt voice assistance module
 
 This openly listens to it's surroundings with the Vosk api (A neural net for speech pattern recognization), when a key phrase is spoken it then responds with the Python "speak" text to 
-speech generator. If it does not recognize the phrase it will start a the chat_gpt4.py and chat gpt will do it's best to anwser.
-- Has a bool and function with timeouts for speaking, so the robot hears itself less. (still a on-going issue)
-- Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 10 seconds.
-- Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give a attire recommendations.
+speech generator. If it does not recognize the phrase it will start up the chat_gpt4.py and chat gpt will do it's best to anwser.
+
+Change log:
+- Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 15 seconds.
+- Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give attire recommendations.
 - Added logging and removed the print statements, this sped up the program quite a bit. 
 - Restructured code for speed and also now it only loads the vosk model at the start only once 
 - Enhanced date born function, it is also now more accurate actual lengths of months and accounting for leap years
+- Connected to the pyttsx3 engine, now the program knows when it is speaking and does not talk to itself. This is a huge milestone. 
+
+Future work
+- The chat_gpt4 module is still needing work in this area due to the threading, that I may end up removing. 
 '''
 
 #!/usr/bin/env python3
@@ -47,23 +52,41 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 model_path = "/home/nvidia/dev/voice_recognition/model/vosk-model-small-en-us-0.15"
 model = vosk.Model(model_path)
 
-def on_speak_end(name, completed):
-    global is_speaking
-    is_speaking = False
-    logging.info("Speaking completed")
+# Global variable to track internet connection
+internet_connected = True
+is_speaking = False
 
 # Initialize the pyttsx3 engine
 engine = pyttsx3.init()
-engine.connect('finished-utterance', on_speak_end)
 
 # Set the speech rate
 engine.setProperty('rate', 120)  # Adjust this value to change speed
 engine.setProperty('voice', 'english+f3')
 
-is_speaking = False
+# Callback functions for speech
+def on_speak_start(name, location, length):
+    global is_speaking
+    is_speaking = True
+    logging.info("Started speaking")
 
-# Global variable to track internet connection
-internet_connected = True
+def on_speak_end(name, completed):
+    global is_speaking
+    is_speaking = False
+    logging.info("Speaking completed")
+
+# Connect the callbacks to the pyttsx3 engine
+engine.connect('started-Word', on_speak_start)
+engine.connect('finished-Word', on_speak_end)
+
+# Function to handle speech output
+def speak(text):
+    global is_speaking
+    while is_speaking:
+        time.sleep(0.1)  # Wait if already speaking
+    is_speaking = True
+    engine.say(text)
+    engine.runAndWait()
+    is_speaking = False  # Set is_speaking to False after speech is completed
 
 # Constants
 API_KEY = "your_api_key"
@@ -132,7 +155,7 @@ def is_connected():
 def check_internet_connection():
     global internet_connected
     while True:
-        time.sleep(10)  # Check every 10 seconds
+        time.sleep(15)  # Check every 15 seconds
         connected = is_connected()
         if connected != internet_connected:
             internet_connected = connected
@@ -160,12 +183,6 @@ def callback(indata, frames, time, status):
     if status:
         logging.debug(status, file=sys.stderr)
     q.put(bytes(indata))
-
-def speak(text):
-    global is_speaking
-    is_speaking = True
-    engine.say(text)
-    engine.runAndWait()
 
 def random_remark():
     remarks = [
@@ -202,7 +219,7 @@ def main():
                 final_phrase = json.loads(json_acceptable_string)
                 logging.info(final_phrase["text"])
                 # requested by the kid to play hide and seek
-                if final_phrase["text"] in ['would you like to play hide and seek', 'hide and seek', 'can you play hide and seek with me', 'can you play hide and seek']:
+                if final_phrase["text"] in ['would you like to play hide and seek', 'what would you like to play hide and seek', 'hide and seek', 'can you play hide and seek with me', 'can you play hide and seek']:
                     answer = ("Yes, I would love to play hide and seek!")
                     logging.info(answer)
                     speak(answer)
@@ -212,7 +229,7 @@ def main():
                         logging.debug(i)
                         speak(str(i))  # Convert integer to string
                         i -= 1
-                        time.sleep(1)
+                        time.sleep(0.5)
                     final_phrase = "Ready or not, here I come"
                     logging.info(final_phrase)
                     speak(final_phrase)
@@ -237,7 +254,7 @@ def main():
                      speak(turing)
 
                 # have the robot tell a joke
-                elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all']:
+                elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all', 'come to a joke']:
                     My_joke = pyjokes.get_joke(language="en", category="neutral")
                     logging.debug(My_joke)
                     speak(My_joke)
@@ -326,7 +343,6 @@ def main():
                 if dump_fn is not None:
                     dump_fn.write(data)
 
-
 try:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
@@ -353,8 +369,6 @@ try:
     if args.samplerate is None:
         device_info = sd.query_devices(args.device, 'input')
         args.samplerate = int(device_info['default_samplerate'])
-
-    model = Model("/home/nvidia/dev/voice_recognition/model/vosk-model-small-en-us-0.15")
 
     if args.filename:
         dump_fn = open(args.filename, "wb")
