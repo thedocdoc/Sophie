@@ -9,10 +9,12 @@ A global variable for internet connectivity and constants for weather API are de
 Weather Report and Attire Suggestions:
 
 The get_weather_report function fetches weather data using the OpenWeather API and suggests attire based on the weather conditions.
+
 Voice Interaction:
 
 The script listens for voice commands and responds accordingly.
 Commands include playing games, telling jokes, providing time and date, weather reports, and personal inquiries like the robot's age or favorite color.
+
 Internet Connectivity Check:
 
 A separate thread continuously checks for internet connectivity and updates the robot's speech output accordingly.
@@ -20,7 +22,7 @@ A separate thread continuously checks for internet connectivity and updates the 
 Speech Recognition and Response Handling:
 
 The robot listens for specific phrases and responds with predefined answers.
-For unrecognized phrases, it starts chat_gpt3.5.py (an external script) to generate responses.
+For unrecognized phrases, it starts chat_gpt4.py (an external script) to generate responses.
 
 Robot Control Commands:
 
@@ -29,6 +31,7 @@ Commands like 'power down' trigger system actions like shutting down the robot.
 Error Handling and Cleanup:
 
 The script handles exceptions and allows for graceful termination using a keyboard interrupt.
+
 Age Calculation and Random Remarks:
 
 The robot calculates its age based on a predefined birth date.
