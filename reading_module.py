@@ -8,44 +8,50 @@ Sophie robot project:
 
 reading physical books/notes module
 
-This reads in a image to OpenCV then does some preprocessing steps to then feeds into pytesseract. Pytesseract then translates the words on the image and prints as a string festival text to speech generator.  
+This reads in a image fro the ZED to OpenCV then does some preprocessing steps to then feeds into pytesseract. Pytesseract then translates the words on the image and prints as a string python tts. This allows the robot to read text put in front of it, works well with black text on white background.
+
+- Added getting a image from the ZED 
+- Changed to python text to speech 
 '''
-# import opencv
-# import opencv
+
+import subprocess
 import cv2
-#import pytesseract module
 import pytesseract
-# import offline TTS festival
-import os 
- 
-# Load the input image
-image = cv2.imread('intro.jpg')
-#cv2.imshow('Original', image)
-#cv2.waitKey(0)
- 
-# Use the cvtColor() function to grayscale the image
-gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+import pyttsx3
 
-# Show grayscale
-# cv2.imshow('Grayscale', gray_image)
-# cv2.waitKey(0) 
+def capture_image_with_zed():
+    try:
+        # Run the zed_snap.py script and capture its output
+        result = subprocess.run(['python', 'zed_snap.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        if result.returncode != 0:
+            print("Error capturing image with ZED camera: " + result.stderr)
+            return None
+        return result.stdout.strip()
+    except Exception as e:
+        print("An error occurred: " + str(e))
+        return None
 
-# Median Blur
-blur_image = cv2.medianBlur(gray_image, 3)
+def read_image_and_convert_to_speech(image_path):
+    # Initialize pyttsx3 engine
+    engine = pyttsx3.init()
+    engine.setProperty('rate', 120) # slow down speech
+    engine.setProperty('voice', 'english+f3') # set to a "female" voice
 
-# Show Median Blur
-# cv2.imshow('Median Blur', blur_image)
-# cv2.waitKey(0) 
+    # Load and process the image
+    image = cv2.imread(image_path)
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur_image = cv2.medianBlur(gray_image, 3)
+    img_rgb = cv2.cvtColor(blur_image, cv2.COLOR_BGR2RGB)
 
-# By default OpenCV stores images in BGR format and since pytesseract assumes RGB format,
-# we need to convert from BGR to RGB format/mode:
-img_rgb = cv2.cvtColor(blur_image, cv2.COLOR_BGR2RGB)
+    # Extract text and convert to speech
+    text = pytesseract.image_to_string(img_rgb)
+    engine.say(text)
+    engine.runAndWait()
 
-#Debug pytesseract 
-#print(pytesseract.image_to_string(img_rgb))
+def main():
+    image_path = capture_image_with_zed()
+    if image_path:
+        read_image_and_convert_to_speech(image_path)
 
-# Convert read text into speech
-os.system('echo "{0}" | festival -b --tts'.format(pytesseract.image_to_string(img_rgb)))         
-
-# Window shown waits for any key pressing event
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
