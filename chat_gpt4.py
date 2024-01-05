@@ -2,8 +2,8 @@
 '''
 Copyright (c) 2023 Apollo Timbers. All rights reserved.
 
-This work is licensed under the terms of the MIT license.
-For a copy, see <https://opensource.org/licenses/MIT>.
+This work is licensed under the terms of the Apache License 2.0.
+For a copy, see https://github.com/apache/.github/blob/main/LICENSE.
 
 Sophie robot project:
 
