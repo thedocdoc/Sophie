@@ -18,12 +18,12 @@ Initial software/programs:
 Current tasks for the robot to preform:
 1. General voice assitance for around the house (now supercharged with Chat GPT!) (check, needs some work but working none the less, It's hearing itself and answering itself and also it should turn to face the direction of the sound if able)
 2. Read a physical book (with my now 7 year old flipping the pages) The reading module is done, need to fine tune it to speed up and preprocess the image more.
-3. Play hide and seek (requested by my daughter, she is going places) (person asks to play haid and seek the robot says it would love too, It rotates 360 scanning the room, it then heads to the wall and starts counding down from 10, It then goes into a complicated and methodical search pattern looking for human like figures and faces. (Never to find anything of course as children will for sure out smart it or lose attention, lol)
+3. Play hide and seek (requested by my daughter, she is going places) (person asks to play hide and seek the robot says "it would love too play hide and seek", (movment stuff is not implemented yet) It rotates 360 scanning the room, it then heads to the wall all while counting down from 10, states (ready or not here I come) It then goes into a complicated and methodical search pattern looking for small human like figures and or faces. (Never to find anything of course as children will for sure out smart it or lose attention, lol)
 4. Wipe down a table (any old table top, more so, see if the table is in a state to be cleaned, then find a rag, fdkjghaskdfh well maybe have a rag with cleaning solution on-board?)
 5. Pick up items on the floor and place them in a basket. (requested by the wife...) (Use vision based AI to scan the floor and anything it thinks it can grab try 3 times, if sucessful take to a bin and drop it in)
 6. Bring a drink from one location to another (it's a beer right?) (map based off the ladar, then vision based AI to find drink, attempt to grasp three times then take to user if successful. (go hide in corner if not successful) 
-7. Serve wine/champagne for a party environment (more alcohol!) Custom serving tray, advanced people/croud navigation... stop once and a while do a large pattern while generally avoiding walls, furnature, fall hazards, and people. 
-8. Greet people at the door (I suppose it could try to say hi and then learn thier names while also linking it to the face_recognition module)
+7. Serve wine/champagne for a party environment (more alcohol!) Custom serving tray, advanced people/croud navigation... stop once and a while do a large pattern while generally avoiding walls, furniture, fall hazards, robot traps and people. 
+8. Greet people at the door (I suppose it could try to say hi and then learn thier names while also linking it to the face_recognition module?)
 
 Hardware specs:
 1. Nvidia Jetson TX2
