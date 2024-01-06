@@ -21,6 +21,7 @@ Change log:
 - Added a semaphore file creation/deletion process to help debug the robot hearing itself and sync with chat_gpt4.py, so far no dice
 - Made the time function more natural sounding and state am/pm
 - Refactored code, reduce main down and add dictionary for the offline phrases
+- Lots of additional descriptions made for easier understanding 
 - Turned weather function into a class, it was getting quite large
 '''
 
