@@ -18,6 +18,7 @@ between question and anwser for longer responses.
 - Figured out that I was reseting the conversation history each user input, it now remembers the context accross multiple interactions
 - Updated model to chat GPT 4
 - Added a semaphore file creation/deletion process to help debug the robot hearing itself, no dice
+- Added mute/un-mute microphone functions, robot no longer hears itself 
 '''
 
 import openai
@@ -42,6 +43,14 @@ online_mode = True  # Tracks if the program is in online mode
 
 # Load your OpenAI API key
 openai.api_key = 'your_api_key'
+
+def mute_microphone():
+    os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 1")
+    time.sleep(0.5)  # Delay after muting
+
+def unmute_microphone():
+    time.sleep(2.5)  # Delay before unmuting
+    os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 0")
 
 def ask_gpt(message):
     global online_mode, conversation_history
@@ -84,9 +93,11 @@ def speak(text):
         # Create the semaphore file
         open("speaking_semaphore.txt", "w").close()
         try:
+            mute_microphone()  # Mute the microphone before speaking
             engine.say(text)
             engine.runAndWait()
         finally:
+            unmute_microphone()  # Unmute the microphone after speaking
             is_speaking = False
             print("is_speaking set to False")  # Debug statement
             # Delete the semaphore file
