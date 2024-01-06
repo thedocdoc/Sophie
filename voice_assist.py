@@ -8,18 +8,20 @@ Sophie robot project:
 
 Offline and chat gpt voice assistance module
 
-This openly listens to it's surroundings with the Vosk api (A neural net for speech pattern recognization), when a key phrase is spoken it then responds with the Python "speak" text to 
+This openly listens to it's surroundings with the Vosk api (A neural net for speech pattern recognization), when a key phrase is spoken it then responds with the Python "speak" text to
 speech generator. If it does not recognize the phrase it will start up the chat_gpt4.py and chat gpt will do it's best to anwser.
 
 Change log:
 - Added a internet connection check and graceful fallback to offline mode only. Also states when internet is down/up and checks every 15 seconds.
 - Built in weather system to pull in local weather, This uses the openweather API to request current weather conditions. This has been expanded to work better and give attire recommendations.
-- Added logging and removed the print statements, this sped up the program quite a bit. 
-- Restructured code for speed and also now it only loads the vosk model at the start only once 
+- Added logging and removed the print statements, this sped up the program quite a bit.
+- Restructured code for speed and also now it only loads the vosk model at the start only once
 - Enhanced date born function, it is also now more accurate actual lengths of months and accounting for leap years
-- Connected to the pyttsx3 engine, now the program knows when it is speaking and does not talk to itself. This is a huge milestone. 
+- Connected to the pyttsx3 engine, now the program knows when it is speaking and does not talk to itself. This is a huge milestone.
 - Added a semaphore file creation/deletion process to help debug the robot hearing itself and sync with chat_gpt4.py, so far no dice
 - Made the time function more natural sounding and state am/pm
+- Refactored code, reduce main down and add dictionary for the offline phrases
+- Turned weather function into a class, it was getting quite large
 
 Future work
 - The chat_gpt4 module is still needing work in this area, that I may end up removing. Still attemptting to find a resolve
@@ -46,8 +48,15 @@ import logging
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from weather_service import WeatherService  # Import the class from weather_service.py
+
 
 semaphore_path = "speaking_semaphore.txt"
+
+#weather_service api
+api_key = "4092a7f5e3bd05ead6075b4300ca7ed5"
+weather_service = WeatherService(api_key)  # Instantiate the service
+CITY_NAME = "webster"
 
 # Delete semaphore file at the start if it exists
 if os.path.exists(semaphore_path):
@@ -90,9 +99,17 @@ engine.connect('started-Word', on_speak_start)
 engine.connect('finished-Word', on_speak_end)
 
 def speak(text):
+    """
+        This function handles the text-to-speech (TTS) process. It ensures that the robot does not overlap its speech
+        or respond to its voice. It uses a semaphore file mechanism to synchronize speaking activities. The function
+        waits if it detects an ongoing speech or the semaphore file's presence, indicating another speech process is active.
+        Once it's clear, the function initiates speech, creates a semaphore file to indicate it's speaking, and then
+        proceeds to vocalize the text using the pyttsx3 engine. After speaking, it cleans up by deleting the semaphore file
+        and resetting the speech flag.
+    """
     global is_speaking
     semaphore_path = "speaking_semaphore.txt"
-    
+
     # Wait if already speaking or semaphore exists
     while os.path.exists(semaphore_path) or is_speaking:
         time.sleep(0.1)
@@ -114,53 +131,7 @@ def speak(text):
         except OSError:
             pass  # Handle the error if needed
 
-# Constants
-API_KEY = "your_api_key"
-BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
-UNITS = "imperial"  # Can switch from imperial to metric here
-CITY_NAME = "Webster"
 
-# Function to get weather report and suggest attire
-def get_weather_report(city):
-    url = f"{BASE_URL}q={city}&units={UNITS}&appid={API_KEY}"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-
-        # Extracting necessary data
-        temperature = round(data['main']['temp'])
-        feels_like = round(data['main']['feels_like'])
-        humidity = data['main']['humidity']
-        weather_description = data['weather'][0]['description']
-
-        # Constructing the weather report
-        report = (
-            f"The current weather in {city} is {weather_description}. "
-            f"The temperature is {temperature} degrees, "
-            f"but it feels like {feels_like} degrees. "
-            f"The humidity is {humidity}%. "
-        )
-
-        # Suggesting attire
-        attire_suggestion = "If you are adventuring outside today, make sure to wear "
-        if "rain" in weather_description:
-            attire_suggestion += "a raincoat."
-        elif temperature >= 76:  # Hot weather
-            attire_suggestion += "light clothing, like shorts and a t-shirt."
-        elif 50 <= temperature < 76:  # Mild weather
-            attire_suggestion += "a long-sleeve shirt and pants."
-        elif 40 <= temperature < 50:  # Cool weather
-            attire_suggestion += "a jacket or a sweater."
-        else:  # Cold weather, including 32 degrees and below
-            attire_suggestion += "warm clothing, like a heavy coat, gloves, and a hat."
-
-        return report + " " + attire_suggestion
-
-    except requests.exceptions.HTTPError as err:
-        return f"HTTP error occurred: {err}"
-    except Exception as err:
-        return f"An error occurred: {err}"
 
 born_date = datetime(2022, 7, 23)  # Date of birth: Year, Month, Day
 
@@ -168,19 +139,6 @@ def calculate_age(born):
     now = datetime.now()
     delta = relativedelta(now, born)
     return f"I'm currently {delta.years} years, {delta.months} months, {delta.days} days, {delta.hours} hours, {delta.minutes} minutes, and {delta.seconds} seconds old."
-
-def get_current_time():
-    now = datetime.now()
-    hour = now.hour
-    minute = now.minute
-    am_pm = "am" if hour < 12 else "pm"
-
-    # Convert to 12-hour format
-    hour = hour % 12 or 12  # Converts '0' to '12'
-
-    # Format the time string
-    time_string = f"It is {hour}:{minute:02d} {am_pm}."
-    return time_string
 
 def is_connected():
     try:
@@ -192,6 +150,14 @@ def is_connected():
 
 # Function to periodically check internet connection
 def check_internet_connection():
+    """
+        Periodically checks for internet connectivity by attempting to create a socket connection to an external server
+        (Google's DNS in this case). This function runs in a separate thread and checks for connectivity every 15 seconds.
+        The global variable 'internet_connected' is updated based on the connection status. If a change in the status is
+        detected (i.e., from connected to disconnected or vice versa), the robot vocalizes the change in connectivity status.
+        This function is crucial for determining the robot's ability to access online features and services, like the
+        Chat GPT module or the weather API, and switch to offline functionalities when the internet is unavailable.
+    """
     global internet_connected
     while True:
         time.sleep(15)  # Check every 15 seconds
@@ -216,7 +182,13 @@ def int_or_str(text):
         return text
 
 def callback(indata, frames, time, status):
-    """This is called (from a separate thread) for each audio block."""
+    """
+        This function is a callback for the SoundDevice library, called for each block of audio data (frame) captured by
+        the microphone. It checks if the robot is currently speaking to avoid processing its voice. If a status error occurs,
+        it is logged for debugging. The function places the captured audio data into a queue ('q'), which will be processed
+        by the speech recognition system. This setup allows for continuous and asynchronous audio data handling, crucial for
+        real-time voice recognition and responsiveness of the robot.
+    """
     if is_speaking:
             return
     if status:
@@ -233,7 +205,76 @@ def random_remark():
     else:
         return ""
 
-def take_picture():
+# Command function definitions
+"""
+    This section forms the core of the voice command interface, where functions corresponding to specific voice commands are defined.
+    Each function is designed to execute a unique set of actions when the robot identifies a matching phrase via the Vosk API.
+    The actions range from engaging the robot in interactive games, like hide and seek, to informative responses about the robot's
+    origins or functionality.
+
+    The modular architecture of this section is pivotal. It allows for the clean separation of command logic,
+    making the code easier to understand and maintain. This structure is particularly beneficial when the voice command system
+    needs to be expanded or modified, as it can be done without major overhauls to the existing codebase.
+    Additionally, this setup contributes to the scalability of the project. As new features or requirements emerge, new command
+    functions can be seamlessly added. Each new function simply needs to be defined here and then linked to an appropriate
+    trigger phrase.
+
+    This approach enhances the interactive capabilities of the robot, ensuring a more robust and reliable voice interaction experience.
+"""
+
+# report the current time voice command
+def current_time(final_phrase):
+    now = datetime.now()
+    hour = now.hour
+    minute = now.minute
+    am_pm = "am" if hour < 12 else "pm"
+
+    # Convert to 12-hour format
+    hour = hour % 12 or 12  # Converts '0' to '12'
+
+    # Format the time string
+    time_string = f"It is {hour}:{minute:02d} {am_pm}."
+    logging.debug(time_string)
+    # Convert read text into speech
+    speak(time_string)
+
+# report the weather voice command
+def report_weather(final_phrase):
+    weather_report = weather_service.get_weather_report(CITY_NAME)
+    logging.info(weather_report)
+    speak(weather_report)
+
+def outside_temp(final_phrase):
+    temperature = weather_service.get_temperature(CITY_NAME)
+    if isinstance(temperature, str):  # Error message returned
+        logging.error(temperature)
+        speak("I'm sorry, I couldn't fetch the temperature.")
+    else:
+        temperature_report = f"The temperature in {CITY_NAME} is {temperature} degrees."
+        logging.info(temperature_report)
+        speak(temperature_report)
+
+# play hide and seek voice command
+def play_hide_and_seek(final_phrase):
+    answer = ("Yes, I would love to play hide and seek!")
+    logging.info(answer)
+    speak(answer)
+    time.sleep (0.8)
+    i = 10
+    while i > 0:
+        logging.debug(i)
+        speak(str(i))  # Convert integer to string
+        i -= 1
+        time.sleep(0.5)
+    final_phrase = "Ready or not, here I come"
+    logging.info(final_phrase)
+    speak(final_phrase)
+
+# take a picture on voice command
+def take_picture_command(final_phrase):
+    photo = ("Taking a picture now")
+    # Command to take a picture is recognized
+    speak(photo)
     try:
         # Replace '/path/to/zed_snap.py' with the actual path to the script
         subprocess.run(['python', '/home/nvidia/dev/Sophie/zed_snap.py'], check=True)
@@ -241,150 +282,181 @@ def take_picture():
     except subprocess.CalledProcessError as e:
         logging.info("Failed to take picture:", e)
 
-def main():
-    # Setup and use the already loaded model
-    with sd.RawInputStream(samplerate=args.samplerate, blocksize=8000, device=args.device, dtype='int16',
-                           channels=1, callback=callback):
-        logging.info('#' * 80)
-        logging.info('Press Ctrl+C to stop the recording')
-        logging.info('#' * 80)
+# tell a joke offline version
+def tell_joke(final_phrase):
+    My_joke = pyjokes.get_joke(language="en", category="neutral")
+    logging.debug(My_joke)
+    speak(My_joke)
 
-        rec = vosk.KaldiRecognizer(model, args.samplerate)
+
+# respond to creator voice command
+def respond_to_creator_inquiry(final_phase):
+    who_made = ("my original designer,and builder, was Apollo Timbers, he started the design stage in the year 2020. The final build was at the end of 2023/beginning of 2024")
+    speak(who_made)
+
+# respond to user question of tiredness voice command
+def do_you_get_tired(final_phrase):
+    tired = ("No of course not I'm a robot, we never need rest")
+    speak(tired)
+
+# robots favorite color
+def favorite_color(final_phrase):
+    grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
+    speak(grey_scale)
+
+
+# Setup and Model Loading
+"""
+This section is responsible for setting up the audio input system and loading the Vosk model for speech recognition. Initially,
+it defines essential parameters like the sampling rate, block size, and the audio input device. These parameters are crucial for
+ensuring that the audio input is correctly captured and processed by the system.
+
+- The 'model_path' specifies the location of the Vosk model. This model is a pre-trained neural network that the Vosk API utilizes
+for recognizing and interpreting spoken words. Loading this model is a critical step, as it equips the robot with the ability to
+understand human speech.
+
+- After defining these parameters, the script creates an instance of the SoundDevice's RawInputStream. This input stream is configured
+with the defined audio parameters and is responsible for continuously capturing audio data from the specified input device.
+
+- Simultaneously, a KaldiRecognizer object from the Vosk API is instantiated. This recognizer works in tandem with the audio input stream.
+It processes the audio data, applying the speech recognition model to convert spoken words into text.
+
+- This setup is key for the voice interaction functionality of the robot. It forms the foundation upon which voice commands are
+recognized and processed, enabling the robot to respond to user interactions in real time.
+"""
+def setup_and_load_model(args):
+    # Access the arguments from the dictionary using square brackets
+    samplerate = args['samplerate']
+    blocksize = args['blocksize']
+    device = args['device']
+    dtype = args['dtype']
+    channels = args['channels']
+    callback = args['callback']
+
+    # Assuming 'model' is defined elsewhere and accessible here
+    # Create and return the RawInputStream and KaldiRecognizer objects
+    return sd.RawInputStream(samplerate=samplerate, blocksize=blocksize, device=device, dtype=dtype, channels=channels, callback=callback), vosk.KaldiRecognizer(model, samplerate)
+
+# Print startup messages
+def print_startup_messages():
+    logging.info('#' * 80)
+    logging.info('Press Ctrl+C to stop the recording')
+    logging.info('#' * 80)
+
+def log_partial_result(recognizer):
+    partial_result = recognizer.PartialResult()
+    logging.info("Partial result: " + partial_result)
+
+def dump_data_if_needed(data, dump_fn):
+    if dump_fn is not None:
+        with open(dump_fn, 'ab') as file:  # 'ab' mode for appending binary data
+            file.write(data)
+
+# Command mapping
+commands = {
+    'would you like to play hide and seek': play_hide_and_seek,
+    'hide and seek': play_hide_and_seek,
+    'can you play hide and seek with me': play_hide_and_seek,
+    'who made you': respond_to_creator_inquiry,
+    'who is your creator': respond_to_creator_inquiry,
+    'who made you' : respond_to_creator_inquiry,
+    'who is your builder' : respond_to_creator_inquiry,
+    'do you sleep' : do_you_get_tired,
+    'do you ever get tired' : do_you_get_tired,
+    'you ever get tired' : do_you_get_tired,
+    'what time is it' : current_time,
+    'what is the current time' : current_time,
+    'current time' : current_time,
+    'what is the time' : current_time,
+    'what is the current weather' : report_weather,
+    'what is the weather' : report_weather,
+    'what is the weather outside' : report_weather,
+    'how is it looking outside' : report_weather,
+    'what does the current weather' : report_weather,
+    'take a picture' : take_picture_command,
+    'take a photo' : take_picture_command,
+    'take picture' : take_picture_command,
+    'tell me a joke' : tell_joke,
+    'tell a joke' : tell_joke,
+    'can you tell me a good joke' : tell_joke,
+    'got a good joke' : tell_joke,
+    'do you joke at all' : tell_joke,
+    'come to a joke' : tell_joke,
+    'what is your favorite color' : favorite_color,
+    'do you have a favorite color' : favorite_color,
+    'what color do you like' : favorite_color,
+    'what is the current temperature outside' : outside_temp,
+    'how hot is it out' : outside_temp,
+    'current temperature outside' : outside_temp,
+    'what is the current temperature outside' : outside_temp,
+    'what is the temperature outside' : outside_temp,
+    # ... other commands ...
+}
+
+# Function to process the command
+def process_command(final_phrase):
+    """
+        This function processes the recognized speech command. It takes the final phrase (result from speech recognition)
+        and searches for predefined commands within the text. The function matches the spoken text against a dictionary of
+        commands ('commands' dictionary). If a match is found, the corresponding function for the command is executed.
+        If no predefined command is recognized, the function defaults to invoking the Chat GPT module ('run_chat_gpt4')
+        to handle the query. This allows for a dynamic response capability where predefined commands are prioritized,
+        and more open-ended queries are handled by Chat GPT.
+    """
+    text = final_phrase.get("text", "").lower()
+    for phrase, func in commands.items():
+        if phrase in text:
+            func(final_phrase)
+            return
+    run_chat_gpt4(text)  # Default action if no command matches
+
+def run_chat_gpt4(input_text):
+    # Assuming you have a script or a command to run GPT-4 for processing input_text
+    python37_path = '/usr/bin/python3.7'  # Replace with your Python 3.7 path
+    script_path = 'chat_gpt4.py'  # Replace with the path to your chat_gpt4 script
+
+    try:
+        # Spawn a new process for chat_gpt4.py and pipe the input
+        process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        stdout, stderr = process.communicate(input=input_text)
+
+        if stderr:
+            logging.error("Error in chat_gpt4: " + stderr)
+        else:
+            # Process and maybe speak the output
+            logging.info("GPT-4 responded: " + stdout)
+            # speak(stdout)  # Uncomment if you have a speak function to vocalize the response
+    except Exception as e:
+        logging.error("Error occurred while running chat_gpt4: " + str(e))
+
+def main():
+    # Setup and model loading
+    args = {
+        'samplerate': 16000,  # Replace with actual samplerate value
+        'blocksize': 8000,
+        'device': 'default',  # Replace with actual device name
+        'dtype': 'int16',
+        'channels': 1,
+        'callback': callback  # Ensure callback is defined elsewhere
+    }
+
+    # Pass the arguments dictionary to the setup function
+    stream, rec = setup_and_load_model(args)
+
+    with stream:
+        print_startup_messages()
+
         while True:
             data = q.get()
-            
-            # Check if chat_gpt4.py is speaking
             if not os.path.exists("speaking_semaphore.txt") and not is_speaking:
                 if rec.AcceptWaveform(data):
                     final = rec.FinalResult()
-                    json_acceptable_string = final
-                    final_phrase = json.loads(json_acceptable_string)
-                    logging.info(final_phrase["text"])
-                    # requested by the kid to play hide and seek
-                    if final_phrase["text"] in ['would you like to play hide and seek', 'what would you like to play hide and seek', 'hide and seek', 'can you play hide and seek with me', 'can you play hide and seek']:
-                        answer = ("Yes, I would love to play hide and seek!")
-                        logging.info(answer)
-                        speak(answer)
-                        time.sleep (0.8)
-                        i = 10
-                        while i > 0:
-                            logging.debug(i)
-                            speak(str(i))  # Convert integer to string
-                            i -= 1
-                            time.sleep(0.5)
-                        final_phrase = "Ready or not, here I come"
-                        logging.info(final_phrase)
-                        speak(final_phrase)
-                    # who is your creator
-                    elif final_phrase["text"] in ['who made you', 'who is your creator', 'who is your builder']:
-                        who_made = ("my original designer,and builder, was Apollo Timbers he started the design stage in the year 2020")
-                        speak(who_made)
-
-                    # do you get tired?
-                    elif final_phrase["text"] in ['do you ever get tired', 'do you sleep', 'you ever get tired']:
-                        tired = ("No of course not I'm a robot, we never need rest")
-                        speak(tired)
-
-                    # can you pass the turing test?
-                    elif final_phrase["text"] in ['can you pass the turing test']:
-                         turing = ("Not a chance")
-                         speak(turing)
-
-                    # Starwars or star trek?
-                    elif final_phrase["text"] in ['do you like star trek or star wars', 'do you like startrek or starwars', 'you like star trek or star wars']:
-                         turing = ("Startrek of course")
-                         speak(turing)
-
-                    # have the robot tell a joke
-                    elif final_phrase["text"] in ['tell a joke', 'tell me a joke', 'can you tell me a good joke' , 'can you tell a joke', 'got a good joke', 'do you joke at all', 'come to a joke']:
-                        My_joke = pyjokes.get_joke(language="en", category="neutral")
-                        logging.debug(My_joke)
-                        speak(My_joke)
-
-                    # 90% of the questions I ask Google lol
-                    elif final_phrase["text"] in ['what time is it', 'what is the current time', 'current time', 'what is the time']:
-                        # Replace the existing code here with:
-                        time_string = get_current_time()
-                        logging.debug(time_string)
-                        # Convert read text into speech
-                        speak(time_string)
-
-                    # The current date (needs work)
-                    elif final_phrase["text"] in ['what date is it', 'what is the current date', 'current date', 'what is the date', 'what day is it', 'what is the current day']:
-                        named_tuple = time.localtime()  # get struct_time
-                        time_string = time.strftime("The current date is %B %d, %Y", named_tuple)
-                        logging.debug(time_string)
-                        # Convert read text into speech
-                        speak(time_string)
-                    # reply with name
-                    elif final_phrase["text"] in ['whats your name', 'what is your name', 'what did you name your robot', 'who are you', 'who our you']:
-                        name = ("My name is Sophie")
-                        speak(name)
-                    # reply if alive
-                    elif final_phrase["text"] in ['are you alive', 'our you alive', 'are you a real person']:
-                        alive = ("No, No, though I use neural networks to understand speech just like your brain does")
-                        speak(alive)
-                    # reply the anwser to the ultimate question
-                    elif final_phrase["text"] in ['what is the meaning of life']:
-                        ultimateQ = ("The meaning of life is 42")
-                        speak(ultimateQ)
-                    # reply the anwser how old, born 07/23/2022
-                    elif final_phrase["text"] in ['how old are you', 'how old our you']:
-                        how_old = calculate_age(born_date)
-                        additional_comment = random_remark()
-                        if additional_comment:
-                            how_old += " " + additional_comment
-                        speak(how_old)
-                    # reply with favorite color
-                    elif final_phrase["text"] in ['what is your favorite color', 'do you have a favorite color', 'what color do you like']:
-                        grey_scale = ("My favorite color is gray, grayscale helps me process vision faster")
-                        speak(grey_scale)
-                    elif final_phrase["text"] in ['power down', 'robot power down', 'shut down']:
-                        shutdown_message = "Shutting down now."
-                        logging.info(shutdown_message)
-                        speak(shutdown_message)
-                        time.sleep(3)  # Give some time for the speech to complete
-                        os.system("sudo shutdown now")  # Shutdown command for Linux-based system
-                    elif final_phrase["text"] in ['what is the current weather', 'what is the weather', 'how is it looking outside', 'what is the weather outside']:
-                       weather_report = get_weather_report(CITY_NAME)
-                       logging.info(weather_report)
-                       speak(weather_report)
-                    # take a picture on voice command
-                    elif final_phrase["text"] in ['take a picture', 'take a photo']:
-                        photo = ("Taking a picture now")
-                        # Command to take a picture is recognized
-                        speak(photo)
-                        take_picture()
-                    elif final_phrase["text"] in ['what is the current temperature', 'how hot is it out', 'how hot is it', 'current temperature outside', 'what is the current temperature outside']:
-                       # Use the get_weather_report function
-                       complete_weather_report = get_weather_report(CITY_NAME)
-
-                       # Extract only the temperature part from the complete weather report
-                       # Assuming the temperature is always mentioned after 'The temperature is ' and ends with ' degrees'
-                       start = complete_weather_report.find('The temperature is ') + len('The temperature is ')
-                       end = complete_weather_report.find(' degrees', start)
-                       temperature_report = complete_weather_report[start:end]
-
-                       temperature_report = f"The temperature in {CITY_NAME} is {temperature_report} degrees."
-                       logging.info(temperature_report)
-                       speak(temperature_report)
-                    else:
-                        time.sleep(0.1) # prevent tight looping
-                        # Use the full path to Python 3.7 in the subprocess call
-                        python37_path = '/usr/bin/python3.7'  # Replace with your actual Python 3.7 path
-                        script_path = 'chat_gpt4.py'
-                        # If none of the commands are recognized, boot up chat_gpt4.py
-                        try:
-                            # Spawn a new process for chat_gpt4.py and pipe the input
-                            process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-                            process.communicate(input=final_phrase["text"])
-                        except Exception as e:
-                            logging.info(f"Error occurred: {e}")
-
-                    # Existing code for partial results and data dumping
-                    logging.info(rec.PartialResult())
-                    if dump_fn is not None:
-                        dump_fn.write(data)
+                    final_phrase = json.loads(final)
+                    process_command(final_phrase)
+                else:
+                    time.sleep(0.1)  # Prevent tight looping
+                    log_partial_result(rec)
+                    dump_data_if_needed(data, dump_fn)
 
 try:
     parser = argparse.ArgumentParser(add_help=False)
