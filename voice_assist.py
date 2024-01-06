@@ -54,7 +54,7 @@ from weather_service import WeatherService  # Import the class from weather_serv
 semaphore_path = "speaking_semaphore.txt"
 
 #weather_service api
-api_key = "4092a7f5e3bd05ead6075b4300ca7ed5"
+api_key = "your_api_key"
 weather_service = WeatherService(api_key)  # Instantiate the service
 CITY_NAME = "webster"
 
