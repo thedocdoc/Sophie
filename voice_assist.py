@@ -51,7 +51,7 @@ from weather_service import WeatherService  # Import the class from weather_serv
 semaphore_path = "speaking_semaphore.txt"
 
 #weather_service api
-api_key = "your_api_key"
+api_key = "your_api_code"
 weather_service = WeatherService(api_key)  # Instantiate the service
 CITY_NAME = "webster"
 
@@ -80,9 +80,11 @@ engine = pyttsx3.init()
 engine.setProperty('rate', 120)  # Adjust this value to change speed
 engine.setProperty('voice', 'english+f3')
 
+
 def unmute_microphone():
-    time.sleep(2.5)  # Delay before unmuting
     os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 0")
+
+unmute_microphone()
 
 # Callback functions for speech
 def on_speak_start(name, location, length):
@@ -283,6 +285,19 @@ def take_picture_command(final_phrase):
     except subprocess.CalledProcessError as e:
         logging.info("Failed to take picture:", e)
 
+# pick block test
+def pick_block(final_phrase):
+    block = ("Picking up and moving block")
+    # Command to take a picture is recognized
+    speak(block)
+    try:
+        # Replace '/path/to/arm_test.py' with the actual path to the script
+        subprocess.run(['python', '/home/nvidia/dev/Sophie/arm_test.py'], check=True)
+        speak("Block moved")
+        logging.info("Block moved")
+    except subprocess.CalledProcessError as e:
+        logging.info("Failed to take picture:", e)
+
 # tell a joke offline version
 def tell_joke(final_phrase):
     My_joke = pyjokes.get_joke(language="en", category="neutral")
@@ -391,6 +406,9 @@ commands = {
     'current temperature outside' : outside_temp,
     'what is the current temperature outside' : outside_temp,
     'what is the temperature outside' : outside_temp,
+    'pick up block' : pick_block,
+    'pick up the block' : pick_block,
+    'move the block' : pick_block,
     # ... other commands ...
 }
 
