@@ -22,9 +22,6 @@ Change log:
 - Made the time function more natural sounding and state am/pm
 - Refactored code, reduce main down and add dictionary for the offline phrases
 - Turned weather function into a class, it was getting quite large
-
-Future work
-- The chat_gpt4 module is still needing work in this area, that I may end up removing. Still attemptting to find a resolve
 '''
 
 #!/usr/bin/env python3
