@@ -11,8 +11,8 @@ This reads in an image from the ZED camera to OpenCV, then performs some preproc
 
 - Added getting an image from the ZED.
 - Changed to Python text-to-speech.
-- Heavily modified the pipeline to scale the image and box the text to help OCR be faster and more accurate, it also aranges teh bounding boxes from left to right and top to bottom so that it reads in teh correct order.
-- You need to hold the boox ~12 inches from the camera, this may be improved by upping the scale factor but it is working well at that distance for now.
+- Heavily modified the pipeline to scale the image and box the text to help OCR be faster and more accurate, it also aranges the bounding boxes from left to right and top to bottom, so that it reads in teh correct order.
+- You need to hold a book/text ~12 inches from the camera, this may be improved by upping the scale factor but it is working well at that distance for now.
 - More optimization is needed in the pipeline...
 '''
 
