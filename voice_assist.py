@@ -83,6 +83,10 @@ engine = pyttsx3.init()
 engine.setProperty('rate', 120)  # Adjust this value to change speed
 engine.setProperty('voice', 'english+f3')
 
+def unmute_microphone():
+    time.sleep(2.5)  # Delay before unmuting
+    os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 0")
+
 # Callback functions for speech
 def on_speak_start(name, location, length):
     global is_speaking
