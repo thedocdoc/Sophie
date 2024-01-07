@@ -6,7 +6,9 @@ For a copy, see https://github.com/apache/.github/blob/main/LICENSE.
 
 Sophie robot project:
 
-Security class module, focusing on providing an automated security system. It integrates a ZED stereo camera and various sensors to monitor an environment for potential security breaches. The system is capable of detecting motion and is planned to be equipped with audio analysis for detecting sounds like breaking glass, enhancing its security capabilities.
+Security class module, focusing on providing an automated security system. It integrates a ZED stereo camera and various sensors to monitor an environment for 
+potential security breaches. The system is capable of detecting motion and is planned to be equipped with AI audio analysis for detecting sounds like breaking glass, 
+enhancing its security capabilities.
 
 Features:
 - Utilization of ZED stereo camera for high-resolution imaging.
