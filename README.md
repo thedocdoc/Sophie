@@ -16,10 +16,11 @@ Initial software/programs:
 and sends a request to the API with the city name, desired units (imperial or metric), and the API key. After
 receiving the response, the function parses the JSON data to extract key weather details such as temperature,
 humidity, and weather description.
+6. security_module.py - This security class module focuses on providing an automated security system. It integrates a ZED stereo camera and various sensors to monitor an environment for potential security breaches. The system is capable of detecting motion and is planned to be equipped with AI audio analysis for detecting sounds like breaking glass, enhancing its security capabilities.
 
 Not yet implemented (WIP)
-6. memory_sys - based on a database (will need to look into this, as it will play a important role to the robot. Think like the ability to recall the last time you seen someone if asked) 
-7. Face_recog - 
+7. memory_sys - based on a database (will need to look into this, as it will play a important role to the robot. Think like the ability to recall the last time you seen someone if asked) 
+8. Face_recog - 
 
 Current tasks for the robot to preform:
 1. General voice assitance for around the house (now supercharged with Chat GPT!) (check, needs some work but working none the less, It's hearing itself and answering itself and also it should turn to face the direction of the sound if able)
