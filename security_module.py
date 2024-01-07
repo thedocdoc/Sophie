@@ -27,6 +27,8 @@ Change log:
 - There is a place holder for a glass breaking monitor, this will need to be a trained AI model for accuracy and to reduce false-positives 
 - This module is in active development. Future versions will include refined motion detection algorithms, real-time audio analysis for additional security features, and improved error handling and logging for robustness and reliability
 - Has a issue where the ZED hangs and has trouble connecting to it, will be a future fix
+- Takes a picture when a security breach is detected
+- Think I got the false detection solved, more testing needed also reduce the time the security system renables after picture is taken
 '''
 
 import cv2
@@ -40,6 +42,7 @@ import logging
 import sys
 import pyttsx3
 import os  
+import subprocess
 
 # Global variable for speaking state
 is_speaking = False
@@ -71,13 +74,18 @@ def unmute_microphone():
     os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 0")
 
 class SecurityModule:
-    def __init__(self, activation_time="09:00", deactivation_time="17:00"):
+    def __init__(self, activation_time="09:00", deactivation_time="17:00", warmup_duration=10):
         logging.info("Initializing Security Module")
         
+        self.is_security_mode_active = False  
+
         self.zed = None  # Initialize ZED camera attribute
 
         self.activation_time = datetime.datetime.strptime(activation_time, "%H:%M").time()
         self.deactivation_time = datetime.datetime.strptime(deactivation_time, "%H:%M").time() 
+        self.warmup_duration = warmup_duration  # Warm-up duration in seconds
+        self.start_time = datetime.datetime.now()  # Record the start time of the system
+
 
         try:
             # Initialize ZED camera as an instance attribute
@@ -94,11 +102,14 @@ class SecurityModule:
             if err != sl.ERROR_CODE.SUCCESS:
                 logging.error(f"Failed to open ZED camera: {repr(err)}")
                 return
+            
+            # Introduce a delay after camera initialization (e.g., 3 seconds)
+            time.sleep(3)
 
             self.system_ready = False  # New flag to indicate system is ready
 
             # Initialize other attributes
-            self.background_subtractor = cv2.createBackgroundSubtractorMOG2()
+            self.background_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=16, detectShadows=True)
             self.is_security_mode_active = False
 
             logging.info("Security Module initialized successfully")
@@ -111,6 +122,11 @@ class SecurityModule:
             if self.zed and not self.zed.is_opened():
                 logging.info("Closing ZED camera due to initialization failure.")
                 self.zed.close()
+    def is_warmup_period(self):
+        """Check if the system is still in the warm-up period."""
+        current_time = datetime.datetime.now()
+        elapsed_time = (current_time - self.start_time).total_seconds()
+        return elapsed_time < self.warmup_duration
 
     def reactivate_camera_if_active(self):
         if self.is_security_mode_active:
@@ -132,6 +148,9 @@ class SecurityModule:
                 logging.error(f"Failed to re-open ZED camera: {repr(err)}")
                 return
 
+            # Introduce a delay after camera re-initialization (e.g., 2 seconds)
+            time.sleep(2)
+
             logging.info("ZED camera re-initialized successfully.")
         except Exception as e:
             logging.error(f"Exception during camera re-initialization: {e}")
@@ -150,11 +169,18 @@ class SecurityModule:
 
     def check_time(self):
         current_time = datetime.datetime.now().time()
-        return self.activation_time <= current_time < self.deactivation_time
+        if self.activation_time <= current_time < self.deactivation_time:
+            return True
+        else:
+            return False
 
     def detect_motion(self):
-        if not self.system_ready:
-            return False  # Do not detect motion until system is ready
+        if not self.system_ready or self.is_warmup_period():
+            return False  # Do not detect motion until system is ready and warm-up period is over
+
+        #if frame_count < initial_frames_to_ignore:
+            #frame_count += 1
+            #return False  # Ignore motion in the initial frames
 
         # Create an RGBA sl.Mat object using self.zed
         image_zed = sl.Mat(self.zed.get_camera_information().camera_resolution.width, 
@@ -172,7 +198,7 @@ class SecurityModule:
 
             # Apply background subtraction
             fg_mask = self.background_subtractor.apply(gray_frame)
-            _, thresh = cv2.threshold(fg_mask, 25, 255, cv2.THRESH_BINARY)
+            _, thresh = cv2.threshold(fg_mask, 200, 255, cv2.THRESH_BINARY)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
@@ -205,7 +231,7 @@ class SecurityModule:
 
     def monitor(self):
         frame_count = 0
-        initial_frames_to_ignore = 60  # Number of frames to ignore at startup
+        initial_frames_to_ignore = 80  # Number of frames to ignore at startup
         while True:
             try:
                 if self.check_time():
@@ -222,13 +248,22 @@ class SecurityModule:
                     if self.detect_motion() or self.detect_breaking_glass():
                         logging.warning("Security breach detected!")
                         self.speak("Security breach detected!")  # Corrected method call
+                        self.close_camera() 
+                        try:
+                            # Replace '/path/to/zed_snap.py' with the actual path to the script
+                            subprocess.run(['python', '/home/nvidia/dev/Sophie/zed_snap.py'], check=True)
+                            logging.info("Picture taken successfully.")
+                        except subprocess.CalledProcessError as e:
+                            logging.info("Failed to take picture:", e)
+                        finally:
+                            self.initialize_camera()  # Reinitialize the camera after taking the snapshot
 
-                else:
-                    if self.is_security_mode_active:
-                        logging.info("Deactivating security mode.")
-                        self.is_security_mode_active = False
+                    else:
+                        if self.is_security_mode_active:
+                            logging.info("Deactivating security mode.")
+                            self.is_security_mode_active = False
  
-                time.sleep(0.5) # prevent tight looping
+                    time.sleep(.5) # prevent tight looping
 
             except Exception as e:
                 logging.error("An error occurred: {}".format(e))
@@ -244,7 +279,8 @@ class SecurityModule:
 def main():
    args = parser.parse_args()
 
-   security_system = SecurityModule(activation_time=args.activation_time, deactivation_time=args.deactivation_time)
+   warmup_duration = 10  # 10 seconds warm-up time
+   security_system = SecurityModule(activation_time=args.activation_time, deactivation_time=args.deactivation_time, warmup_duration=warmup_duration)
    security_system.start_monitoring_thread()
 
    # Keep the main thread alive or wait for a stop signal
