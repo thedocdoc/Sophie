@@ -18,6 +18,7 @@ Features:
 - Time-based activation and deactivation of the security system.
 - Logging system for tracking events, errors, and system status.
 - Threaded implementation for concurrent processing of camera feed and monitoring tasks.
+- Takes two pictures when a security breach is detected and saves to a folder with a date/time stamp
 
 Change log:
 
@@ -27,7 +28,7 @@ Change log:
 - There is a place holder for a glass breaking monitor, this will need to be a trained AI model for accuracy and to reduce false-positives 
 - This module is in active development. Future versions will include refined motion detection algorithms, real-time audio analysis for additional security features, and improved error handling and logging for robustness and reliability
 - Has a issue where the ZED hangs and has trouble connecting to it, will be a future fix
-- Takes a picture when a security breach is detected
+- Takes two pictures when a security breach is detected and saves to a folder, of the frame the detection was made and one a second later
 - Think I got the false detection solved, more testing needed also reduce the time the security system renables after picture is taken
 '''
 
@@ -42,7 +43,6 @@ import logging
 import sys
 import pyttsx3
 import os  
-import subprocess
 
 # Global variable for speaking state
 is_speaking = False
@@ -64,14 +64,6 @@ engine.setProperty('voice', 'english+f3')
 parser = argparse.ArgumentParser(description="Run the security system")
 parser.add_argument('--activation_time', type=str, default="09:00", help='Activation time (HH:MM)')
 parser.add_argument('--deactivation_time', type=str, default="17:00", help='Deactivation time (HH:MM)')
-
-def mute_microphone():
-    os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 1")
-    time.sleep(0.5)  # Delay after muting
-
-def unmute_microphone():
-    time.sleep(2.5)  # Delay before unmuting
-    os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 0")
 
 class SecurityModule:
     def __init__(self, activation_time="09:00", deactivation_time="17:00", warmup_duration=10):
@@ -173,25 +165,28 @@ class SecurityModule:
             return True
         else:
             return False
+    def capture_and_save_frame(self, frame, suffix=""):
+        """Capture and save a frame with a date/time stamp."""
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"security_capture_{timestamp}{suffix}.png"
+        folder_path = "/home/nvidia/dev/Sophie/security_events"  # Update this to your desired folder
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+        cv2.imwrite(os.path.join(folder_path, filename), frame)
 
     def detect_motion(self):
         if not self.system_ready or self.is_warmup_period():
             return False  # Do not detect motion until system is ready and warm-up period is over
 
-        #if frame_count < initial_frames_to_ignore:
-            #frame_count += 1
-            #return False  # Ignore motion in the initial frames
-
         # Create an RGBA sl.Mat object using self.zed
-        image_zed = sl.Mat(self.zed.get_camera_information().camera_resolution.width, 
-                           self.zed.get_camera_information().camera_resolution.height, 
+        image_zed = sl.Mat(self.zed.get_camera_information().camera_resolution.width,
+                           self.zed.get_camera_information().camera_resolution.height,
                            sl.MAT_TYPE.U8_C4)
 
         # Capture image from ZED camera using self.zed
         if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
             self.zed.retrieve_image(image_zed, sl.VIEW.LEFT)
             frame = image_zed.get_data()
-            #logging.info("Frame grabbed")
 
             # Convert to grayscale
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -203,8 +198,27 @@ class SecurityModule:
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
                 if cv2.contourArea(contour) > 1500:  # Threshold for object size
-                    return True
-        return False
+                    # Motion detected
+                    logging.warning("Security breach detected!")
+                    self.speak("Security breach detected!")  # Text-to-speech alert
+
+                    # Save the current frame
+                    self.capture_and_save_frame(frame, suffix="_detection")
+
+                    # Wait for 1 second and capture another frame
+                    time.sleep(1)
+                    if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
+                        self.zed.retrieve_image(image_zed, sl.VIEW.LEFT)
+                        next_frame = image_zed.get_data()
+                        self.capture_and_save_frame(next_frame, suffix="_post_detection")
+
+                    # Reinitialize the camera
+                    self.initialize_camera()
+
+                    return True  # Return True as motion is detected
+
+        return False  # Return False if no motion is detected
+
 
     def detect_breaking_glass(self):
         # Placeholder for real-time audio analysis code
@@ -219,11 +233,9 @@ class SecurityModule:
                 try:
                     logging.debug("Ready to speak.")
                     is_speaking = True
-                    #mute_microphone()
                     engine.say(text)
                     engine.runAndWait()
                 finally:
-                    #unmute_microphone()
                     is_speaking = False
                     engine_lock.release()
 
@@ -248,15 +260,6 @@ class SecurityModule:
                     if self.detect_motion() or self.detect_breaking_glass():
                         logging.warning("Security breach detected!")
                         self.speak("Security breach detected!")  # Corrected method call
-                        self.close_camera() 
-                        try:
-                            # Replace '/path/to/zed_snap.py' with the actual path to the script
-                            subprocess.run(['python', '/home/nvidia/dev/Sophie/zed_snap.py'], check=True)
-                            logging.info("Picture taken successfully.")
-                        except subprocess.CalledProcessError as e:
-                            logging.info("Failed to take picture:", e)
-                        finally:
-                            self.initialize_camera()  # Reinitialize the camera after taking the snapshot
 
                     else:
                         if self.is_security_mode_active:
@@ -271,15 +274,10 @@ class SecurityModule:
                 # Optionally, break the loop if a critical error occurs
                 # break
 
-    # The camera closure code should be moved to a method that is explicitly called to stop the monitoring
-    # logging.info("Closing ZED camera.")
-    # self.zed.close()
-    
-
 def main():
    args = parser.parse_args()
 
-   warmup_duration = 10  # 10 seconds warm-up time
+   warmup_duration = 5  # 5 seconds warm-up time
    security_system = SecurityModule(activation_time=args.activation_time, deactivation_time=args.deactivation_time, warmup_duration=warmup_duration)
    security_system.start_monitoring_thread()
 
