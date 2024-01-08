@@ -29,7 +29,7 @@ Change log:
 - This module is in active development. Future versions will include refined motion detection algorithms, real-time audio analysis for additional security features, and improved error handling and logging for robustness and reliability
 - Has a issue where the ZED hangs and has trouble connecting to it, will be a future fix
 - Takes two pictures when a security breach is detected and saves to a folder, of the frame the detection was made and one a second later
-- Think I got the false detection solved, more testing needed also reduce the time the security system renables after picture is taken
+- False initial detection solved
 '''
 
 import cv2
