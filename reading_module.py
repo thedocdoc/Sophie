@@ -16,6 +16,7 @@ This allows the robot to read text put in front of it, works well with black tex
 - Changed to python text to speech
 - heavily modified the pipeline to scale the image and box the text to help the OCR be faster and more accurate
 - Need to have scale adjust more automatically, also I think adding auto adjustment of teh contrast/treshold may help in differnt lighting situations. 
+- Sort the words form left to right, and top to bottom
 '''
 
 import subprocess
@@ -38,11 +39,10 @@ def capture_image_with_zed():
         return None
 
 def box_scale_and_ocr_text_in_image(image_path):
-
     # Initialize pyttsx3 engine
     engine = pyttsx3.init()
-    engine.setProperty('rate', 120) # slow down speech
-    engine.setProperty('voice', 'english+f3') # set to a "female" voice
+    engine.setProperty('rate', 120)  # slow down speech
+    engine.setProperty('voice', 'english+f3')  # set to a "female" voice
     image = cv2.imread(image_path)
 
     # Convert to grayscale
@@ -53,27 +53,25 @@ def box_scale_and_ocr_text_in_image(image_path):
 
     # Find contours
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Sort contours into lines
-    lines = []
+    
+    # Organize contours into lines and sort them
+    lines = {}
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
-        match_found = False
-        for line in lines:
-            _, line_y, _, line_h = cv2.boundingRect(line[0])
-            if y < line_y + line_h and y + h > line_y:
-                line.append(cnt)
-                match_found = True
-                break
-        if not match_found:
-            lines.append([cnt])
+        line_index = y // 10  # assuming a fixed line height, adjust as needed
+        if line_index not in lines:
+            lines[line_index] = []
+        lines[line_index].append((x, cnt))
 
+    # Logging the number of lines detected
     logging.info(f"Number of lines detected: {len(lines)}")
 
-    for line in lines:
-        line.sort(key=lambda ctr: cv2.boundingRect(ctr)[0])
-        for cnt in line:
-            x, y, w, h = cv2.boundingRect(cnt)
+    # Process each line
+    for _, line_contours in sorted(lines.items()):
+        # Sort contours in a line based on the x position
+        sorted_contours = sorted(line_contours, key=lambda item: item[0])
+        for x, cnt in sorted_contours:
+            _, y, w, h = cv2.boundingRect(cnt)
             # Extract the region of interest (text area)
             roi = image[y:y+h, x:x+w]
 
@@ -84,21 +82,19 @@ def box_scale_and_ocr_text_in_image(image_path):
             dim = (width, height)
             resized_roi = cv2.resize(roi, dim, interpolation=cv2.INTER_LINEAR)
 
+            # Measure time for OCR
             start_time = time.time()
             extracted_text = pytesseract.image_to_string(resized_roi)
             duration = time.time() - start_time
             logging.info(f"OCR processed in {duration:.2f} seconds.")
 
-            # Apply OCR to the scaled text area
-            extracted_text = pytesseract.image_to_string(resized_roi)
+            # Print and read the extracted text
             print("Extracted Text:", extracted_text)
-
-            # Use pyttsx3 to read the extracted text
             engine.say(extracted_text)
             engine.runAndWait()
 
+    # Release all resources
     cv2.destroyAllWindows()
-
 
 # Main function
 def main():
