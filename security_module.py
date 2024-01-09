@@ -10,26 +10,31 @@ Security class module, focusing on providing an automated security system. It in
 potential security breaches. The system is capable of detecting motion and is planned to be equipped with AI audio analysis for detecting sounds like breaking glass, 
 enhancing its security capabilities.
 
-Features:
+Note: This module is in active development. Future versions will include refined motion detection algorithms, real-time audio analysis for additional security features (Planned integration of audio analysis for breaking glass detection.), and improved error handling and logging for robustness and reliability
+
+Current Features:
+
 - Utilization of ZED stereo camera for high-resolution imaging.
 - Motion detection using background subtraction and contour analysis with OpenCV.
-- Planned integration of audio analysis for breaking glass detection.
 - Text-to-speech functionality for audible alerts in case of security breaches.
 - Time-based activation and deactivation of the security system.
 - Logging system for tracking events, errors, and system status.
 - Threaded implementation for concurrent processing of camera feed and monitoring tasks.
 - Takes two pictures when a security breach is detected and saves to a folder with a date/time stamp
+- Sends a email with image attachments of the event to user
 
 Change log:
 
 - First revision of code that is in a working state
-- The mic mute functions may not be needed as voice_assist.py will be off during the security monitoring
-- It does a single false detection at the beginning that I'm still trying to resolve
 - There is a place holder for a glass breaking monitor, this will need to be a trained AI model for accuracy and to reduce false-positives 
-- This module is in active development. Future versions will include refined motion detection algorithms, real-time audio analysis for additional security features, and improved error handling and logging for robustness and reliability
+- Now takes a image when a security breach is detected and saves to a folder, of the frame the detection was made and one a half later
+- Added email functionality
+- Reduced log spam
+
+Know issues:
+
 - Has a issue where the ZED hangs and has trouble connecting to it, will be a future fix
-- Takes two pictures when a security breach is detected and saves to a folder, of the frame the detection was made and one a second later
-- False initial detection solved
+- Email sending takes a good chunk of time to comeplete may need a seperate class for it, so it can detect quick before alerts
 '''
 
 import cv2
@@ -43,6 +48,11 @@ import logging
 import sys
 import pyttsx3
 import os  
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Global variable for speaking state
 is_speaking = False
@@ -80,25 +90,14 @@ class SecurityModule:
 
 
         try:
-            # Initialize ZED camera as an instance attribute
-            self.zed = sl.Camera()
-
-            # Set configuration parameters
-            init = sl.InitParameters()  # Adjust according to your needs
-            init.camera_resolution = sl.RESOLUTION.HD1080
-            init.depth_mode = sl.DEPTH_MODE.PERFORMANCE
-            init.coordinate_units = sl.UNIT.MILLIMETER
-
-            # Open the camera using self.zed
-            err = self.zed.open(init)
-            if err != sl.ERROR_CODE.SUCCESS:
-                logging.error(f"Failed to open ZED camera: {repr(err)}")
-                return
+            self.initialize_camera()
             
             # Introduce a delay after camera initialization (e.g., 3 seconds)
             time.sleep(3)
 
             self.system_ready = False  # New flag to indicate system is ready
+
+            self.recent_frame_paths = []  # List to store the paths of recent frames
 
             # Initialize other attributes
             self.background_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=16, detectShadows=True)
@@ -131,7 +130,7 @@ class SecurityModule:
         try:
             self.zed = sl.Camera()
             init = sl.InitParameters()
-            init.camera_resolution = sl.RESOLUTION.VGA
+            init.camera_resolution = sl.RESOLUTION.HD1080
             init.depth_mode = sl.DEPTH_MODE.PERFORMANCE
             init.coordinate_units = sl.UNIT.MILLIMETER
 
@@ -173,6 +172,23 @@ class SecurityModule:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
         cv2.imwrite(os.path.join(folder_path, filename), frame)
+        full_path = os.path.join(folder_path, filename)
+        cv2.imwrite(full_path, frame)
+    
+        # Store the path of the saved frame
+        self.recent_frame_paths.append(full_path)
+
+    """
+    Detect Motion Function: Real-time Motion Detection and Alerting
+
+    This function is responsible for continuously monitoring the environment 
+    using the ZED stereo camera. It captures frames from the camera and processes 
+    them to detect motion. Motion detection is achieved through background subtraction 
+    and contour analysis. If motion above a certain threshold is detected, the function 
+    logs the event, triggers an audible alert, captures and saves images of the event, 
+    and reinitializes the camera for continued monitoring.
+    """
+
 
     def detect_motion(self):
         if not self.system_ready or self.is_warmup_period():
@@ -205,15 +221,20 @@ class SecurityModule:
                     # Save the current frame
                     self.capture_and_save_frame(frame, suffix="_detection")
 
-                    # Wait for 1 second and capture another frame
-                    time.sleep(1)
+                    # Wait for 0.5 seconds and capture another frame
+                    time.sleep(0.5)
                     if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
                         self.zed.retrieve_image(image_zed, sl.VIEW.LEFT)
                         next_frame = image_zed.get_data()
                         self.capture_and_save_frame(next_frame, suffix="_post_detection")
 
-                    # Reinitialize the camera
-                    self.initialize_camera()
+
+                    # send email with captured frames
+                    send_email("Motion Detected", "Motion has been detected by Sophie the home robot security system.", "example@gmail.com", attachments=self.recent_frame_paths)
+                    logging.info("Email sent")
+
+                    # Clear the list after sending the email
+                    self.recent_frame_paths.clear()
 
                     return True  # Return True as motion is detected
 
@@ -241,9 +262,21 @@ class SecurityModule:
 
         threading.Thread(target=run_speak).start()
 
+    """
+    Monitor Method: Security System Activation and Motion Detection
+
+    This method controls the operational state of the security system,
+    activating it during specified hours and deactivating it otherwise.
+    During active hours, it initially bypasses a set number of frames to
+    allow the system to stabilize. After this warm-up period, it continuously
+    monitors for security breaches using motion detection and other security
+    features. If a breach is detected, it triggers appropriate alert mechanisms.
+
+    """
+
     def monitor(self):
         frame_count = 0
-        initial_frames_to_ignore = 80  # Number of frames to ignore at startup
+        initial_frames_to_ignore = 20  # Number of frames to ignore at startup
         while True:
             try:
                 if self.check_time():
@@ -258,21 +291,65 @@ class SecurityModule:
 
                     # Add your motion detection and other monitoring logic here
                     if self.detect_motion() or self.detect_breaking_glass():
-                        logging.warning("Security breach detected!")
-                        self.speak("Security breach detected!")  # Corrected method call
+                        #logging.warning("Security breach detected!")
+                        #self.speak("Security breach detected!")  # Corrected method call
 
-                    else:
-                        if self.is_security_mode_active:
-                            logging.info("Deactivating security mode.")
-                            self.is_security_mode_active = False
- 
-                    time.sleep(.5) # prevent tight looping
+                else:
+                    if self.is_security_mode_active:
+                        logging.info("Deactivating security mode.")
+                        self.is_security_mode_active = False
+
+                time.sleep(0.5)
 
             except Exception as e:
-                logging.error("An error occurred: {}".format(e))
-                # Handle specific exceptions or perform a cleanup here if needed
-                # Optionally, break the loop if a critical error occurs
-                # break
+                logging.error(f"An error occurred: {e}")
+
+"""
+Send Email Function: Alert Notification via Email
+
+This function is designed to send email notifications in the event of a security breach. 
+It constructs an email with a specified subject and body, attaches images captured during 
+the motion detection event, and sends it to a predefined recipient. The function uses 
+SMTP for email transmission, ensuring that alerts are promptly delivered. 
+"""
+
+def send_email(subject, body, to_email, attachments=None):
+    try:
+        # Email credentials and server information
+        from_email = "example@gmail.com"  # Replace with your email
+        password = "phbn vgld elck vucp"  # Replace with your email password
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587  # For TLS
+
+        # Create message
+        message = MIMEMultipart()
+        message["From"] = from_email
+        message["To"] = to_email
+        message["Subject"] = subject
+
+        # Attach the body of the email to the message
+        message.attach(MIMEText(body, "plain"))
+
+        # Attach files
+        if attachments:
+            for file in attachments:
+                part = MIMEBase('application', "octet-stream")
+                with open(file, 'rb') as file_attachment:
+                    part.set_payload(file_attachment.read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', 'attachment; filename="{}"'.format(os.path.basename(file)))
+                message.attach(part)
+
+        # Connect to the server and send the email
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Secure the connection
+        server.login(from_email, password)
+        server.send_message(message)
+        server.quit()
+
+        print("Email sent successfully")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 def main():
    args = parser.parse_args()
