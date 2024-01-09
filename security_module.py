@@ -317,7 +317,7 @@ def send_email(subject, body, to_email, attachments=None):
     try:
         # Email credentials and server information
         from_email = "example@gmail.com"  # Replace with your email
-        password = "phbn vgld elck vucp"  # Replace with your email password
+        password = "password"  # Replace with your email password
         smtp_server = "smtp.gmail.com"
         smtp_port = 587  # For TLS
 
