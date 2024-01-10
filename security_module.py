@@ -277,32 +277,39 @@ class SecurityModule:
     def monitor(self):
         frame_count = 0
         initial_frames_to_ignore = 20  # Number of frames to ignore at startup
-        while True:
-            try:
-                if self.check_time():
-                    if not self.is_security_mode_active:
-                        logging.info("Activating security mode.")
-                        self.is_security_mode_active = True
-                    if frame_count < initial_frames_to_ignore:
-                        frame_count += 1
-                        continue
 
-                    self.system_ready = True  # Set system as ready after initial frames
+        def monitor(self):
+            frame_count = 0
+            initial_frames_to_ignore = 20  # Number of frames to ignore at startup
 
-                    # Add your motion detection and other monitoring logic here
-                    if self.detect_motion() or self.detect_breaking_glass():
-                        #logging.warning("Security breach detected!")
-                        #self.speak("Security breach detected!")  # Corrected method call
+            while True:
+                try:
+                    if self.check_time():
+                        if not self.is_security_mode_active:
+                            logging.info("Activating security mode.")
+                            self.is_security_mode_active = True
 
-                else:
-                    if self.is_security_mode_active:
-                        logging.info("Deactivating security mode.")
-                        self.is_security_mode_active = False
+                        if frame_count < initial_frames_to_ignore:
+                            frame_count += 1
+                            continue
 
-                time.sleep(0.5)
+                        self.system_ready = True  # Set system as ready after initial frames
 
-            except Exception as e:
-                logging.error(f"An error occurred: {e}")
+                        # Add your motion detection and other monitoring logic here
+                        if self.detect_motion() or self.detect_breaking_glass():
+                            logging.warning("Security breach detected!")
+                            # self.speak("Security breach detected!")  # Corrected method call
+                    else:
+                        if self.is_security_mode_active:
+                            logging.info("Deactivating security mode.")
+                            self.is_security_mode_active = False
+
+                    time.sleep(0.5)
+
+                except Exception as e:
+                    logging.error(f"An error occurred: {e}")
+
+
 
 """
 Send Email Function: Alert Notification via Email
@@ -317,7 +324,7 @@ def send_email(subject, body, to_email, attachments=None):
     try:
         # Email credentials and server information
         from_email = "example@gmail.com"  # Replace with your email
-        password = "password"  # Replace with your email password
+        password = "16_digit_app_password"  # Replace with your email password
         smtp_server = "smtp.gmail.com"
         smtp_port = 587  # For TLS
 
