@@ -1,4 +1,3 @@
-
 '''
 Copyright (c) 2023 Apollo Timbers. All rights reserved.
 
@@ -19,6 +18,7 @@ between question and anwser for longer responses.
 - Updated model to chat GPT 4
 - Added a semaphore file creation/deletion process to help debug the robot hearing itself, no dice
 - Added mute/un-mute microphone functions, robot no longer hears itself 
+- cleaned up unused code
 '''
 
 import openai
@@ -49,7 +49,7 @@ def mute_microphone():
     time.sleep(0.5)  # Delay after muting
 
 def unmute_microphone():
-    time.sleep(2.5)  # Delay before unmuting
+    time.sleep(0.5)  # Delay before unmuting
     os.system("pactl set-source-mute alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-mono 0")
 
 def ask_gpt(message):
@@ -84,14 +84,9 @@ def ask_gpt(message):
 def speak(text):
     def run_speak():
         global is_speaking
-        print("Checking if already speaking or semaphore file exists...")  # Debug statement
-        while os.path.exists("speaking_semaphore.txt") or is_speaking:
-            time.sleep(0.1)
         print("Ready to speak.")  # Debug statement
         is_speaking = True
         print("is_speaking set to True")  # Debug statement
-        # Create the semaphore file
-        open("speaking_semaphore.txt", "w").close()
         try:
             mute_microphone()  # Mute the microphone before speaking
             engine.say(text)
@@ -100,17 +95,11 @@ def speak(text):
             unmute_microphone()  # Unmute the microphone after speaking
             is_speaking = False
             print("is_speaking set to False")  # Debug statement
-            # Delete the semaphore file
-            os.remove("speaking_semaphore.txt")
-            print("Semaphore file deleted.")  # Debug statement
 
     # Start the speech in a new thread
     threading.Thread(target=run_speak).start()
 
 def main():
-    # Quick TTS test
-    # speak("Hello World")
-    # time.sleep(3)  # Wait for the test speech to finish
     global online_mode, conversation_history
 
     if sys.stdin.isatty():
