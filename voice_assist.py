@@ -21,8 +21,8 @@ Change log:
 - Added a semaphore file creation/deletion process to help debug the robot hearing itself and sync with chat_gpt4.py, so far no dice
 - Made the time function more natural sounding and state am/pm
 - Refactored code, reduce main down and add dictionary for the offline phrases
-- Lots of additional descriptions made for easier understanding 
 - Turned weather function into a class, it was getting quite large
+- cleaned up unused code, also sped up the transition back from chat GPT from ~30 seconds to ~5. 
 '''
 
 #!/usr/bin/env python3
@@ -43,25 +43,16 @@ import random
 import socket
 import threading
 import logging
+import signal
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from weather_service import WeatherService  # Import the class from weather_service.py
 
-
-semaphore_path = "speaking_semaphore.txt"
-
 #weather_service api
-api_key = "your_api_code"
+api_key = "your_api_key"
 weather_service = WeatherService(api_key)  # Instantiate the service
 CITY_NAME = "webster"
-
-# Delete semaphore file at the start if it exists
-if os.path.exists(semaphore_path):
-    try:
-        os.remove(semaphore_path)
-    except OSError as e:
-        logging.error(f"Error deleting semaphore file: {e}")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # To also log to a file, add filename='myapp.log' in basicConfig
@@ -112,30 +103,17 @@ def speak(text):
         and resetting the speech flag.
     """
     global is_speaking
-    semaphore_path = "speaking_semaphore.txt"
-
-    # Wait if already speaking or semaphore exists
-    while os.path.exists(semaphore_path) or is_speaking:
-        time.sleep(0.1)
-
     is_speaking = True
     try:
         # Create the semaphore file
-        with open(semaphore_path, "w") as f:
-            pass
+        #with open(semaphore_path, "w") as f:
+            #pass
 
         engine.say(text)
         engine.runAndWait()
 
     finally:
         is_speaking = False
-        # Safely delete the semaphore file
-        try:
-            os.remove(semaphore_path)
-        except OSError:
-            pass  # Handle the error if needed
-
-
 
 born_date = datetime(2022, 7, 23)  # Date of birth: Year, Month, Day
 
@@ -390,6 +368,7 @@ commands = {
     'what is the weather outside' : report_weather,
     'how is it looking outside' : report_weather,
     'what does the current weather' : report_weather,
+    'whats the weather' : report_weather,
     'take a picture' : take_picture_command,
     'take a photo' : take_picture_command,
     'take picture' : take_picture_command,
@@ -431,13 +410,27 @@ def process_command(final_phrase):
     run_chat_gpt4(text)  # Default action if no command matches
 
 def run_chat_gpt4(input_text):
-    # Assuming you have a script or a command to run GPT-4 for processing input_text
+    """
+    Runs the chat_gpt4.py script as a subprocess to process the given input text using GPT-4.
+    Utilizes Python 3.7 for execution. Handles UNIX signals for graceful termination of the subprocess.
+    Communicates with the subprocess via standard input/output and logs the responses or errors.
+    """
     python37_path = '/usr/bin/python3.7'  # Replace with your Python 3.7 path
     script_path = 'chat_gpt4.py'  # Replace with the path to your chat_gpt4 script
 
+    def signal_handler(sig, frame):
+        logging.info("Signal received, terminating subprocess.")
+        process.terminate()  # Terminate the subprocess if a signal is received
+
     try:
+        # Register the signal handler
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
         # Spawn a new process for chat_gpt4.py and pipe the input
         process = subprocess.Popen([python37_path, script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        
+        # Communicate with the subprocess
         stdout, stderr = process.communicate(input=input_text)
 
         if stderr:
@@ -446,6 +439,7 @@ def run_chat_gpt4(input_text):
             # Process and maybe speak the output
             logging.info("GPT-4 responded: " + stdout)
             # speak(stdout)  # Uncomment if you have a speak function to vocalize the response
+
     except Exception as e:
         logging.error("Error occurred while running chat_gpt4: " + str(e))
 
@@ -468,13 +462,13 @@ def main():
 
         while True:
             data = q.get()
-            if not os.path.exists("speaking_semaphore.txt") and not is_speaking:
+            if not is_speaking:
                 if rec.AcceptWaveform(data):
                     final = rec.FinalResult()
                     final_phrase = json.loads(final)
                     process_command(final_phrase)
                 else:
-                    time.sleep(0.1)  # Prevent tight looping
+                    time.sleep(0.05)  # Prevent tight looping
                     log_partial_result(rec)
                     dump_data_if_needed(data, dump_fn)
 
